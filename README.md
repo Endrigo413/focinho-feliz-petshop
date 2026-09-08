@@ -82,7 +82,12 @@ SMTP_PASS=<senha de app de 16 dígitos>
 
 O sistema segue a arquitetura clássica de e-commerce em **três camadas**, com a
 camada de regras de negócio subdividida em **módulos de serviço** por domínio.
-Detalhes e diagrama em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
+
+- [`docs/DOCUMENTACAO.md`](docs/DOCUMENTACAO.md) — documentação de engenharia:
+  visão geral, requisitos (RF/RNF), arquitetura, modelagem de dados e os
+  diagramas (casos de uso, DER, sequência).
+- [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md) — arquitetura detalhada, com
+  diagrama de camadas e fluxos.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
