@@ -9,6 +9,30 @@ const gateway = require("./payment.gateway");
 const produtosRepo = require("../products/products.repository");
 const cartService = require("../cart/cart.service");
 const checkoutService = require("../checkout/checkout.service");
+const email = require("../../lib/email");
+
+/** E-mail transacional de confirmação de compra (não bloqueia a resposta). */
+function enviarEmailPedido(pedido) {
+  const para = pedido.cliente && pedido.cliente.email;
+  if (!para) return;
+  const linhas = pedido.itens.map((i) => `  • ${i.quantidade}× ${i.nome} — ${formatBRL(i.subtotal)}`).join("\n");
+  const pix = pedido.pagamento && pedido.pagamento.pix;
+  const texto =
+    `Olá, ${pedido.cliente.nome}!\n\n` +
+    `Recebemos o seu pedido ${pedido.id}.\n\n` +
+    `${linhas}\n\n` +
+    `Subtotal: ${formatBRL(pedido.subtotal)}\n` +
+    `Frete (${pedido.frete.servico || "entrega"}): ${formatBRL(pedido.frete.valor)}\n` +
+    `Total: ${formatBRL(pedido.total)}\n\n` +
+    `Forma de pagamento: ${pedido.formaPagamento}\n` +
+    (pix ? `Pix copia e cola:\n${pix.copiaECola}\n\n` : "") +
+    `Você acompanha o status em "Minha conta".\n\n— Equipe Focinho Feliz`;
+  email.enviar({ para, assunto: `Pedido ${pedido.id} recebido — Focinho Feliz`, texto }).catch(() => {});
+}
+
+function formatBRL(v) {
+  return "R$ " + (Number(v) || 0).toFixed(2).replace(".", ",");
+}
 
 /* ----------------------------- helpers ----------------------------- */
 
@@ -128,6 +152,7 @@ function criarPedido({ usuarioId, cliente, itens, subtotal, enderecoEntrega, for
 
   ajustarEstoque(itens, -1); // reserva o estoque
   repo.inserir(pedido);
+  enviarEmailPedido(pedido);
   return pedido;
 }
 

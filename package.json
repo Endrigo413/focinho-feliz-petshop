@@ -1,7 +1,7 @@
 {
   "name": "focinho-feliz-petshop",
-  "version": "2.0.0",
-  "description": "E-commerce e clínica para pet shop. Arquitetura em camadas (apresentação / regras de negócio / armazenamento) com backend Node/Express modular e frontend em HTML/CSS/JS.",
+  "version": "3.0.0",
+  "description": "E-commerce e clínica para pet shop (multipágina, estilo marketplace). Arquitetura em camadas com backend Node/Express modular, catálogo com filtros, blog, lojas, painel administrativo e frontend em HTML/CSS/JS.",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {

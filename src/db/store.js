@@ -21,7 +21,11 @@ const COLECOES_PADRAO = () => ({
   pedidos: [],
   agendamentos: [],
   eventosPagamento: [], // idempotência de webhooks
-  codigos: [] // códigos de confirmação de e-mail / redefinição de senha
+  codigos: [], // códigos de confirmação de e-mail / redefinição de senha
+  postsBlog: [],
+  comentariosBlog: [], // "opiniões" dos leitores
+  banners: [],
+  promocoes: []
 });
 
 let dados = null;

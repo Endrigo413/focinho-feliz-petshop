@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Painel Administrativo — Focinho Feliz</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<a class="skip-link" href="#adminConteudo">Pular para o conteúdo</a>
+<div class="admin">
+  <aside class="admin__lateral">
+    <a class="admin__logo" href="/admin">🐾 Focinho Feliz <span class="tag-admin">ADMIN</span></a>
+    <nav class="admin__nav" id="adminNav">
+      <button data-aba="visao" class="is-ativo">📊 Visão geral</button>
+      <button data-aba="produtos">📦 Produtos</button>
+      <button data-aba="pedidos">🧾 Pedidos</button>
+      <button data-aba="agenda">📅 Agendamentos</button>
+      <button data-aba="blog">📰 Blog</button>
+      <button data-aba="banners">🖼️ Banners &amp; Promoções</button>
+    </nav>
+    <a class="admin__voltar" href="/">← Ver a loja</a>
+    <a class="admin__voltar" href="#" id="adminSair">Sair</a>
+  </aside>
+
+  <main class="admin__conteudo" id="adminConteudo">
+    <p class="vazio">Verificando acesso…</p>
+  </main>
+</div>
+
+<div id="ff-toasts" class="toasts"></div>
+<div id="modalHost"></div>
+
+<script src="/js/core.js"></script>
+<script src="/js/cart.js"></script>
+<script src="/js/componentes.js"></script>
+<script src="/js/admin.js"></script>
+</body>
+</html>

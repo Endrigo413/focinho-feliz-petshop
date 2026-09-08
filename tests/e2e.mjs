@@ -50,9 +50,22 @@ async function req(metodo, caminho, { body, token, raw } = {}) {
 
 const rnd = () => crypto.randomBytes(4).toString("hex");
 
+// IDs de produtos reais, descobertos na hora (o catálogo é gerado).
+const PROD = { a: "p01", b: "p05", baixo: "p06", extra: "p09" };
+async function descobrirProdutos() {
+  const r = await req("GET", "/products?porPagina=120&ordenar=nome");
+  const emEstoque = r.json.produtos.filter((p) => p.estoque > 3 && p.ativo !== false);
+  const baixo = r.json.produtos.filter((p) => p.estoque > 0 && p.estoque <= 12);
+  if (emEstoque[0]) PROD.a = emEstoque[0].id;
+  if (emEstoque[1]) PROD.b = emEstoque[1].id;
+  if (emEstoque[2]) PROD.extra = emEstoque[2].id;
+  if (baixo[0]) PROD.baixo = baixo[0].id;
+}
+
 /* ======================================================================= */
 async function funcionais() {
   console.log("\n===== TESTES FUNCIONAIS =====\n");
+  await descobrirProdutos();
   const email = `cli.${rnd()}@teste.com`;
   const senha = "senha123";
 
@@ -155,7 +168,8 @@ async function funcionais() {
 
   // TF09 — filtro por preço
   const preco = await req("GET", "/products?precoMin=100&precoMax=200");
-  const dentro = preco.json.produtos.every((p) => p.preco >= 100 && p.preco <= 200);
+  const ef = (p) => (p.precoPromocional != null ? p.precoPromocional : p.preco);
+  const dentro = preco.json.produtos.every((p) => ef(p) >= 100 && ef(p) <= 200);
   registrar(
     "TF09",
     "Funcional",
@@ -175,8 +189,8 @@ async function funcionais() {
   );
 
   // TF11–TF14 — carrinho
-  await req("POST", "/cart/items", { token: token2, body: { produtoId: "p01", quantidade: 2 } });
-  const add2 = await req("POST", "/cart/items", { token: token2, body: { produtoId: "p05", quantidade: 1 } });
+  await req("POST", "/cart/items", { token: token2, body: { produtoId: PROD.a, quantidade: 2 } });
+  const add2 = await req("POST", "/cart/items", { token: token2, body: { produtoId: PROD.b, quantidade: 1 } });
   registrar(
     "TF11",
     "Funcional",
@@ -184,8 +198,8 @@ async function funcionais() {
     add2.status === 201 && add2.json.itens.length === 2 ? "PASSA" : "FALHA",
     `2 produtos distintos no carrinho, ${add2.json.quantidadeItens} unidades, total ${add2.json.total}`
   );
-  const upd = await req("PUT", "/cart/items/p01", { token: token2, body: { quantidade: 5 } });
-  const item01 = upd.json.itens.find((i) => i.produtoId === "p01");
+  const upd = await req("PUT", "/cart/items/" + PROD.a, { token: token2, body: { quantidade: 5 } });
+  const item01 = upd.json.itens.find((i) => i.produtoId === PROD.a);
   registrar(
     "TF12",
     "Funcional",
@@ -193,7 +207,7 @@ async function funcionais() {
     upd.status === 200 && item01.quantidade === 5 ? "PASSA" : "FALHA",
     `p01 quantidade 2 → 5, subtotal do item ${item01.subtotal}`
   );
-  const del = await req("DELETE", "/cart/items/p05", { token: token2 });
+  const del = await req("DELETE", "/cart/items/" + PROD.b, { token: token2 });
   registrar(
     "TF13",
     "Funcional",
@@ -201,7 +215,7 @@ async function funcionais() {
     del.status === 200 && del.json.itens.length === 1 ? "PASSA" : "FALHA",
     `após remover p05: ${del.json.itens.length} item restante`
   );
-  const excesso = await req("POST", "/cart/items", { token: token2, body: { produtoId: "p06", quantidade: 999 } });
+  const excesso = await req("POST", "/cart/items", { token: token2, body: { produtoId: PROD.baixo, quantidade: 999 } });
   registrar(
     "TF14",
     "Funcional",
@@ -235,7 +249,7 @@ async function funcionais() {
 
   // TF16 — painel administrativo: CRUD de produto + autorização
   const adminLogin = await req("POST", "/auth/login", {
-    body: { email: "admin@focinhofeliz.com.br", senha: "admin123" }
+    body: { email: "admin@focinhofeliz.com.br", senha: "FocinhoFeliz#2026" }
   });
   const admToken = adminLogin.json?.accessToken;
   const criar = await req("POST", "/products", {
@@ -304,7 +318,7 @@ async function integracao(ctx) {
   const cli = ctx;
   const pedPix = await req("POST", "/orders", {
     token: cli.token,
-    body: { itens: [{ id: "p09", quantidade: 1 }], formaPagamento: "pix", cep: "12080-000" }
+    body: { itens: [{ id: PROD.extra, quantidade: 1 }], formaPagamento: "pix", cep: "12080-000" }
   });
   registrar(
     "TI02",
@@ -317,7 +331,7 @@ async function integracao(ctx) {
   // TI03 — gateway: cartão
   const pedCard = await req("POST", "/orders", {
     token: cli.token,
-    body: { itens: [{ id: "p09", quantidade: 1 }], formaPagamento: "cartao", cep: "12080-000" }
+    body: { itens: [{ id: PROD.extra, quantidade: 1 }], formaPagamento: "cartao", cep: "12080-000" }
   });
   registrar(
     "TI03",
@@ -454,7 +468,7 @@ async function seguranca(ctx) {
   // TS03 — dados de cartão
   const pedCard = await req("POST", "/orders", {
     token: ctx.token,
-    body: { itens: [{ id: "p09", quantidade: 1 }], formaPagamento: "cartao", cep: "12080-000" }
+    body: { itens: [{ id: PROD.extra, quantidade: 1 }], formaPagamento: "cartao", cep: "12080-000" }
   });
   const guardaCartao = /(\bnumero_cartao\b|\bcardNumber\b|\bcvv\b|\bcvc\b)/i.test(pedCard.raw || JSON.stringify(pedCard.json));
   registrar(
@@ -492,9 +506,20 @@ async function seguranca(ctx) {
     `x-powered-by removido=${!h.get("x-powered-by")}; ausentes: ${faltando.join(", ") || "nenhum"}. Recomendado adicionar (ex.: helmet).`
   );
 
-  // TS06 — rate limiting em login
+  // TS07 — código de verificação exposto na resposta (antes de estourar o rate limit)
+  const reg = await req("POST", "/auth/register", { body: { nome: "Sete", email: `s7.${rnd()}@teste.com`, senha: "senha123" } });
+  const expoeCodigo = reg.json && typeof reg.json.codigoDev === "string";
+  registrar(
+    "TS07",
+    "Segurança",
+    "Código de verificação no corpo da resposta (modo dev)",
+    "ATENCAO",
+    `cadastro → HTTP ${reg.status}; campo "codigoDev" no JSON=${expoeCodigo ? '"' + reg.json.codigoDev + '"' : "ausente"}. Sem SMTP a API entrega o código na resposta para facilitar o teste; precisa estar comprovadamente desligado em produção.`
+  );
+
+  // TS06 — rate limiting nas rotas de autenticação
   const tentativas = [];
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 25; i++) {
     const r = await req("POST", "/auth/login", { body: { email: "naoexiste@x.com", senha: "errada" } });
     tentativas.push(r.status);
   }
@@ -504,18 +529,7 @@ async function seguranca(ctx) {
     "Segurança",
     "Proteção contra força bruta no login (rate limiting)",
     bloqueou ? "PASSA" : "ATENCAO",
-    `12 tentativas seguidas de login → status ${[...new Set(tentativas)].join("/")}. Sem limite de tentativas por IP no login.`
-  );
-
-  // TS07 — código de verificação exposto na resposta
-  const reg = await req("POST", "/auth/register", { body: { nome: "Sete", email: `s7.${rnd()}@teste.com`, senha: "senha123" } });
-  const expoeCodigo = reg.json && typeof reg.json.codigoDev === "string";
-  registrar(
-    "TS07",
-    "Segurança",
-    "Código de verificação no corpo da resposta (modo dev)",
-    "ATENCAO",
-    `cadastro → HTTP ${reg.status}; campo "codigoDev" no JSON=${expoeCodigo ? '"' + reg.json.codigoDev + '"' : "ausente"}. Sem SMTP a API entrega o código na resposta para facilitar o teste; precisa estar comprovadamente desligado em produção (só ocorre quando SMTP não está configurado).`
+    `sequência de tentativas de login → status ${[...new Set(tentativas)].join("/")}. Limite por IP nas rotas /api/auth/* (middleware em memória).`
   );
 }
 
@@ -539,14 +553,16 @@ async function usabilidadeDesempenho() {
 
   // TU02 — acessibilidade básica
   const temSkip = /skip-link/.test(html);
-  const temAria = (html.match(/aria-[a-z]+=/g) || []).length;
   const temLang = /<html[^>]+lang=["']pt/.test(html);
+  const temLandmark = /<main[^>]/.test(html) && /id="ff-header"/.test(html) && /id="ff-footer"/.test(html);
+  const contaJs = await (await fetch(BASE + "/js/layout.js")).text();
+  const ariaNoHeader = (contaJs.match(/aria-[a-z]+/g) || []).length;
   registrar(
     "TU02",
     "Usabilidade",
     "Acessibilidade básica",
-    temSkip && temAria > 5 && temLang ? "PASSA" : "ATENCAO",
-    `lang="pt-BR"=${temLang}; link "pular para o conteúdo"=${temSkip}; ${temAria} atributos ARIA no HTML`
+    temSkip && temLang && temLandmark ? "PASSA" : "ATENCAO",
+    `lang="pt-BR"=${temLang}; link "pular para o conteúdo"=${temSkip}; landmarks main/header/footer=${temLandmark}; ${ariaNoHeader} usos de ARIA no cabeçalho (layout.js). Auditar com Lighthouse na versão publicada.`
   );
 
   // TU03 — velocidade (mede 5x cada rota e tira a média)

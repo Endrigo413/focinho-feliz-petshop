@@ -8,14 +8,17 @@
  */
 
 const config = require("./src/config");
-const { executarSeed } = require("./src/db/seed");
+const { executarSeed, garantirAdmin } = require("./src/db/seed");
 const { criarApp } = require("./src/app");
 
 const resultadoSeed = executarSeed();
 if (!resultadoSeed.pulado) {
   console.log("🌱 Banco inicial criado em data/db.json");
-  console.log(`   Admin: ${config.admin.email} / senha: ${config.admin.senha}`);
 }
+if (garantirAdmin().criado) {
+  console.log("👤 Conta admin criada.");
+}
+console.log(`   Admin: ${config.admin.email} / senha: ${config.admin.senha}`);
 
 const app = criarApp();
 

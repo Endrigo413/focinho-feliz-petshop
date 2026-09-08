@@ -2,9 +2,13 @@
 
 const express = require("express");
 const asyncHandler = require("../../middleware/asyncHandler");
+const { limitar } = require("../../middleware/rateLimit");
 const service = require("./auth.service");
 
 const router = express.Router();
+
+// Protege as rotas de autenticação contra força bruta (ver docs/TESTES.md, D5).
+router.use(limitar({ janelaMs: 15 * 60 * 1000, max: 20, mensagem: "Muitas tentativas de autenticação. Aguarde 15 minutos." }));
 
 // POST /api/auth/register — cria conta (status "pendente") e envia código por e-mail
 router.post(

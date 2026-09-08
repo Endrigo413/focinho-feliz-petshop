@@ -2,17 +2,20 @@
 
 const express = require("express");
 const asyncHandler = require("../../middleware/asyncHandler");
-const { autenticar } = require("../../middleware/auth");
+const { autenticar, autenticarOpcional } = require("../../middleware/auth");
 const exigirAdmin = require("../../middleware/admin");
 const service = require("./products.service");
 
 const router = express.Router();
 
-// GET /api/products — lista pública com paginação e filtros
+// GET /api/products — lista pública com filtros, ordenação, paginação e facetas.
+// Admin autenticado pode passar ?incluirInativos=1.
 router.get(
   "/",
+  autenticarOpcional,
   asyncHandler(async (req, res) => {
-    res.json(service.listar(req.query));
+    const admin = !!req.usuario && req.usuario.papel === "admin";
+    res.json(service.listar(req.query, { admin }));
   })
 );
 
@@ -21,6 +24,14 @@ router.get(
   "/:id",
   asyncHandler(async (req, res) => {
     res.json(service.obter(req.params.id));
+  })
+);
+
+// GET /api/products/:id/relacionados — produtos da mesma seção
+router.get(
+  "/:id/relacionados",
+  asyncHandler(async (req, res) => {
+    res.json({ produtos: service.relacionados(req.params.id) });
   })
 );
 
@@ -34,7 +45,7 @@ router.post(
   })
 );
 
-// PUT /api/products/:id — atualiza produto / estoque (admin)
+// PUT /api/products/:id — atualiza produto / estoque / preço (admin)
 router.put(
   "/:id",
   autenticar,
@@ -50,8 +61,17 @@ router.delete(
   autenticar,
   exigirAdmin,
   asyncHandler(async (req, res) => {
-    const produto = service.desativar(req.params.id);
-    res.json({ mensagem: "Produto desativado.", produto });
+    res.json({ mensagem: "Produto desativado.", produto: service.desativar(req.params.id) });
+  })
+);
+
+// POST /api/products/:id/reativar — volta um produto desativado ao catálogo (admin)
+router.post(
+  "/:id/reativar",
+  autenticar,
+  exigirAdmin,
+  asyncHandler(async (req, res) => {
+    res.json({ mensagem: "Produto reativado.", produto: service.reativar(req.params.id) });
   })
 );
 

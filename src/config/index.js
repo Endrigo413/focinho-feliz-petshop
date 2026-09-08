@@ -19,7 +19,7 @@ const config = {
 
   admin: {
     email: process.env.ADMIN_EMAIL || "admin@focinhofeliz.com.br",
-    senha: process.env.ADMIN_PASSWORD || "admin123",
+    senha: process.env.ADMIN_PASSWORD || "FocinhoFeliz#2026",
     nome: "Administrador Focinho Feliz"
   },
 
@@ -53,8 +53,8 @@ const config = {
   },
 
   paginacao: {
-    porPaginaPadrao: 12,
-    porPaginaMax: 60
+    porPaginaPadrao: 24,
+    porPaginaMax: 120
   }
 };
 

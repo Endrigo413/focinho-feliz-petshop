@@ -2,12 +2,7 @@
 
 /**
  * API Gateway — ponto de entrada único da API (`/api`).
- *
- * Recebe todas as requisições do front-end e as direciona para o serviço
- * de domínio responsável. Cada serviço é um módulo independente em
- * `src/modules/*` com suas próprias camadas (rotas → controller → service →
- * repositório). Trocar um módulo por um microsserviço externo, no futuro,
- * é só mudar a linha de `use` correspondente.
+ * Recebe as requisições e distribui para cada serviço de domínio.
  */
 
 const express = require("express");
@@ -21,30 +16,26 @@ const checkoutRoutes = require("../modules/checkout/checkout.routes");
 const ordersRoutes = require("../modules/orders/orders.routes");
 const servicesRoutes = require("../modules/services/services.routes");
 const appointmentsRoutes = require("../modules/services/appointments.routes");
+const storesRoutes = require("../modules/stores/stores.routes");
+const blogRoutes = require("../modules/blog/blog.routes");
+const bannersRoutes = require("../modules/banners/banners.routes");
+const adminRoutes = require("../modules/admin/admin.routes");
 
 const router = express.Router();
 
-// Healthcheck / descoberta
 router.get("/", (_req, res) => {
   res.json({
     nome: "Focinho Feliz API",
-    versao: "2.0.0",
+    versao: "3.0.0",
     servicos: [
-      "/api/auth",
-      "/api/users",
-      "/api/products",
-      "/api/categories",
-      "/api/cart",
-      "/api/checkout",
-      "/api/orders",
-      "/api/services",
-      "/api/appointments"
+      "/api/auth", "/api/users", "/api/products", "/api/categories",
+      "/api/cart", "/api/checkout", "/api/orders", "/api/services",
+      "/api/appointments", "/api/stores", "/api/blog", "/api/banners", "/api/admin"
     ]
   });
 });
 router.get("/health", (_req, res) => res.json({ status: "ok", em: new Date().toISOString() }));
 
-// Serviços de domínio
 router.use("/auth", authRoutes);
 router.use("/users", usersRoutes);
 router.use("/products", productsRoutes);
@@ -54,5 +45,9 @@ router.use("/checkout", checkoutRoutes);
 router.use("/orders", ordersRoutes);
 router.use("/services", servicesRoutes);
 router.use("/appointments", appointmentsRoutes);
+router.use("/stores", storesRoutes);
+router.use("/blog", blogRoutes);
+router.use("/banners", bannersRoutes);
+router.use("/admin", adminRoutes);
 
 module.exports = router;

@@ -1,12 +1,17 @@
 # Focinho Feliz — E-commerce & Clínica para Pet Shop
 
-Loja virtual de produtos e agendamento de serviços para pet shop, com
-**back-end Node.js/Express** organizado em **arquitetura em camadas + módulos**
-e **front-end** em HTML, CSS e JavaScript puro.
+Loja virtual **multipágina** (estilo marketplace) de produtos e serviços para
+pet shop, clínica e jardinagem, com **back-end Node.js/Express** em
+**arquitetura em camadas + módulos** e **front-end** em HTML, CSS e JavaScript
+puro (sem framework nem build).
 
-> Versão 2.0 — adiciona autenticação JWT, usuários, categorias, carrinho,
-> cálculo de frete, pedidos com pagamento e webhook, mantendo tudo o que a
-> versão 1 já tinha (vitrine, filtros, agendamento de serviços, carrinho local).
+> Versão 3.0 — site reconstruído em páginas separadas (home, catálogo com
+> filtros, produto, serviços, lojas, blog, carrinho, conta, admin), catálogo
+> com 340+ produtos em 8 seções (incluindo **Jardinagem** e **Aquarismo**),
+> banners e promoções, blog com comentários, página de lojas com links do
+> Google Maps e um **painel administrativo** completo.
+> Versões anteriores: 2.0 (auth JWT, confirmação por e-mail, frete por raio) ·
+> 1.0 (vitrine única).
 
 ---
 
@@ -19,13 +24,21 @@ npm start
 
 O site abre em `http://localhost:3000` e a API em `http://localhost:3000/api`.
 
-Na primeira execução o banco (`data/db.json`) é criado e populado
-automaticamente a partir de `data/products.js`, incluindo uma conta admin:
+Na primeira execução o banco (`data/db.json`) é criado e populado. Para
+recriá-lo do zero: `npm run seed`.
+
+### Login de administrador
 
 ```
 e-mail: admin@focinhofeliz.com.br
-senha:  admin123
+senha:  FocinhoFeliz#2026
 ```
+
+O painel administrativo fica em **`/admin`** (também há um atalho no menu da
+conta quando você entra com o admin). Lá dá para: ver métricas, **cadastrar /
+editar / remover produtos escolhendo a seção**, ajustar preços e estoque,
+acompanhar e mudar o status dos pedidos, ver agendamentos, escrever posts do
+blog, moderar comentários e editar os banners e promoções da home.
 
 Desenvolvimento com reinício automático:
 
@@ -152,31 +165,33 @@ petshop/
 ├── docs/
 │   └── ARQUITETURA.md           # arquitetura detalhada + diagrama + fluxos
 ├── data/
-│   ├── products.js              # catálogo semente de produtos
+│   ├── products.js              # catálogo (gerado por templates: 340+ produtos, 8 seções)
 │   ├── services.js              # catálogo de serviços da clínica
-│   ├── db.json                  # banco (gerado; fora do git)
-│   └── emails/                  # e-mails "enviados" em modo dev (fora do git)
+│   ├── stores.js                # 5 lojas em Taubaté + centro de distribuição (FATEC)
+│   ├── blog.js                  # posts semente do blog
+│   ├── banners.js               # banners da home + cards de promoção
+│   └── db.json / emails/        # gerados em runtime (fora do git)
 ├── src/
-│   ├── app.js                   # monta o Express (middlewares + gateway)
-│   ├── config/                  # configuração + carregador de .env
-│   ├── gateway/router.js        # API Gateway
-│   ├── lib/                     # jwt, senha, codigo, email, ids, AppError
-│   ├── middleware/              # auth, admin, erro, asyncHandler
-│   ├── db/                      # store (persistência) + seed
+│   ├── app.js                   # monta o Express (headers de segurança + gateway)
+│   ├── config/  gateway/  lib/  middleware/ (auth, admin, rateLimit, erro)  db/
 │   └── modules/
-│       ├── auth/                # auth.routes · auth.service · verification.service
-│       ├── users/               # + users.repository
-│       ├── products/            # + products.repository
-│       ├── categories/
-│       ├── cart/
-│       ├── checkout/            # + geo.js (CEP → distância até a FATEC Taubaté)
-│       ├── orders/              # + orders.repository · payment.gateway
-│       └── services/            # services + appointments
-└── public/                      # front-end estático
-    ├── index.html
-    ├── js/auth.js               # login/cadastro/código/senha (window.FFAuth)
-    ├── js/main.js               # vitrine, carrinho, checkout, agendamento
-    └── css/style.css
+│       ├── auth/    users/    products/    categories/
+│       ├── cart/    checkout/ (+ geo.js)   orders/ (+ payment.gateway)
+│       ├── services/ (services + appointments)
+│       ├── stores/  blog/     banners/     admin/  (overview, pedidos, agenda)
+├── tests/e2e.mjs                # suíte de testes (npm test)
+└── public/                      # front-end multipágina
+    ├── index.html  produtos.html  produto.html  servicos.html
+    ├── lojas.html  blog.html  blog-post.html  carrinho.html  admin.html
+    ├── conta/  entrar · criar · confirmar · recuperar · painel .html
+    ├── css/style.css
+    └── js/
+        ├── core.js         # window.FF: sessão, API, utilitários
+        ├── cart.js         # window.FFCart: carrinho no localStorage
+        ├── layout.js       # cabeçalho + rodapé compartilhados (injetados)
+        ├── componentes.js  # window.FFUI: card de produto + grade
+        └── <página>.js     # home, catalogo, produto, servicos, lojas,
+                            #   blog, blog-post, carrinho, conta, painel, admin
 ```
 
 ### Decisões de projeto
@@ -260,7 +275,24 @@ uma tabela de faixas de CEP → coordenadas (`src/modules/checkout/geo.js`).
 | POST | `/api/appointments` | Cria agendamento |
 | GET | `/api/appointments/:id` | Consulta um agendamento |
 
+### Conteúdo (v3)
+
+| Método | Rota | Acesso | Descrição |
+|---|---|---|---|
+| GET | `/api/products` | público | Agora com filtros `subcategoria`, `marca` (várias, vírgula), `promo`, `avaliacaoMin`, `ordenar` (`relevancia`/`menor-preco`/`maior-preco`/`avaliacao`/`nome`) e `facetas` (marcas + faixa de preço) na resposta |
+| GET | `/api/products/:id/relacionados` | público | Produtos da mesma seção |
+| GET | `/api/stores` | público | Lojas + centro de distribuição, com `mapsUrl` |
+| GET | `/api/banners` | público | Banners da home e cards de promoção ativos |
+| GET | `/api/blog` · `/api/blog/:slug` | público | Lista e detalhe dos posts (com comentários) |
+| POST | `/api/blog/:slug/comentarios` | cliente | Leitor deixa uma opinião (`texto`, `nota` 1–5) |
+| POST/PUT/DELETE | `/api/products`, `/api/blog`, `/api/banners/*` | **admin** | CRUD de catálogo, posts e banners |
+| DELETE | `/api/blog/comentarios/:id` | **admin** | Moderação de comentários |
+| GET | `/api/admin/overview` | **admin** | Métricas do painel |
+| GET | `/api/admin/orders` · PATCH `/api/admin/orders/:id/status` | **admin** | Todos os pedidos e mudança de status |
+| GET | `/api/admin/appointments` | **admin** | Todos os agendamentos |
+
 Descoberta: `GET /api/` lista os serviços; `GET /api/health` é o healthcheck.
+As rotas `/api/auth/*` têm **rate limiting** (20 requisições / 15 min por IP).
 
 ---
 
