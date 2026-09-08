@@ -110,8 +110,13 @@ quando `usuario.papel === "admin"`.
 - `GET /api/cart` devolve itens com preço atual, subtotal e total.
 
 ### Serviço de Pedidos e Pagamento — `orders` + `checkout`
-- `checkout/shipping`: cálculo de frete (mock) por região do CEP e valor da
-  compra, com regra de frete grátis.
+- `checkout/shipping`: **área de entrega por raio**. Centro de distribuição na
+  FATEC Taubaté; `geo.js` converte o CEP em coordenadas aproximadas (tabela de
+  faixas) e calcula a distância (Haversine). Entregável se ≤ 40 km; frete =
+  distância × R$ 0,59; prazo por faixa de distância.
+- `orders`: ao criar o pedido com `cep`, o `resolverFrete()` **recalcula o
+  frete no servidor** (não confia no cliente) e recusa (`422`) endereços fora
+  do raio.
 - `orders`:
   - **Com login**: `POST /api/orders` fecha o carrinho → cria o pedido →
     reserva estoque → limpa o carrinho → gera a cobrança no gateway.
@@ -133,8 +138,8 @@ quando `usuario.papel === "admin"`.
 1b. POST /api/auth/verify-email  ─►  { accessToken }  (conta "ativa")
 2. GET  /api/products?categoria=racao  ──►  vitrine
 3. POST /api/cart/items {produtoId,qtd} ─►  carrinho no servidor
-4. POST /api/checkout/shipping {cep}  ───►  opções de frete
-5. POST /api/orders {formaPagamento,frete}
+4. POST /api/checkout/shipping {cep}  ───►  distância, entregável?, frete, prazo
+5. POST /api/orders {itens,formaPagamento,cep}
         │  valida estoque, reserva, limpa carrinho
         └──────────────────────────────►  { pedido, pagamento: {pix|checkoutUrl} }
 6. (cliente paga no app do banco)

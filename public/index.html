@@ -229,11 +229,25 @@
     <p class="cart-empty">Seu carrinho está vazio.</p>
   </div>
   <div class="cart-drawer__footer">
-    <div class="cart-total">
-      <span>Total</span>
-      <strong id="cartTotal">R$ 0,00</strong>
+    <div class="shipping-box">
+      <label for="cepFrete">Calcular frete e entrega</label>
+      <p class="shipping-box__origin">Saímos da <strong>FATEC Taubaté</strong> — entregamos em até 40&nbsp;km (R$&nbsp;0,59/km).</p>
+      <form class="shipping-box__row" id="freteForm">
+        <input type="text" id="cepFrete" name="cep" inputmode="numeric" autocomplete="postal-code"
+               placeholder="Digite seu CEP" maxlength="9" aria-label="CEP para cálculo de frete" />
+        <button type="submit" class="btn btn--ghost btn--small" id="calcFreteBtn">Calcular</button>
+      </form>
+      <p class="shipping-box__result" id="freteResult" role="status" hidden></p>
     </div>
+
+    <dl class="cart-summary">
+      <div><dt>Subtotal</dt><dd id="cartSubtotal">R$ 0,00</dd></div>
+      <div id="cartFreteLine" hidden><dt>Frete</dt><dd id="cartFrete">—</dd></div>
+      <div class="cart-summary__total"><dt>Total</dt><dd id="cartTotal">R$ 0,00</dd></div>
+    </dl>
+
     <button class="btn btn--primary btn--block" id="checkoutBtn" disabled>Finalizar pedido</button>
+    <p class="cart-hint" id="checkoutHint" hidden></p>
   </div>
 </aside>
 <div class="overlay" id="overlay"></div>

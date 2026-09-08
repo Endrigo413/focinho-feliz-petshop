@@ -4,10 +4,12 @@
 const state = {
   products: [],
   services: [],
-  cart: [] // { id, nome, preco, quantidade, estoque }
+  cart: [], // { id, nome, preco, quantidade, estoque }
+  frete: null // { cep, local, distanciaKm, entregavel, valor, prazoDiasUteis, servico }
 };
 
 const CART_STORAGE_KEY = "focinhofeliz_cart";
+const FRETE_STORAGE_KEY = "focinhofeliz_frete";
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 document.getElementById("anoAtual").textContent = new Date().getFullYear();
@@ -242,6 +244,8 @@ function formatDuracao(min) {
 function saveCart() {
   try {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(state.cart));
+    if (state.frete) localStorage.setItem(FRETE_STORAGE_KEY, JSON.stringify(state.frete));
+    else localStorage.removeItem(FRETE_STORAGE_KEY);
   } catch (err) {
     console.warn("Não foi possível salvar o carrinho localmente.", err);
   }
@@ -251,6 +255,8 @@ function loadCartFromStorage() {
   try {
     const raw = localStorage.getItem(CART_STORAGE_KEY);
     if (raw) state.cart = JSON.parse(raw);
+    const freteRaw = localStorage.getItem(FRETE_STORAGE_KEY);
+    if (freteRaw) state.frete = JSON.parse(freteRaw);
   } catch (err) {
     console.warn("Não foi possível recuperar o carrinho salvo.", err);
     state.cart = [];
@@ -330,11 +336,12 @@ function removeFromCart(id) {
 function updateCartUI() {
   const itemsEl = document.getElementById("cartItems");
   const totalCount = state.cart.reduce((sum, i) => sum + i.quantidade, 0);
-  const totalPrice = state.cart.reduce((sum, i) => sum + i.quantidade * i.preco, 0);
+  const subtotal = state.cart.reduce((sum, i) => sum + i.quantidade * i.preco, 0);
 
   document.getElementById("cartCount").textContent = totalCount;
-  document.getElementById("cartTotal").textContent = currency(totalPrice);
-  document.getElementById("checkoutBtn").disabled = state.cart.length === 0;
+  document.getElementById("cartSubtotal").textContent = currency(subtotal);
+
+  renderFreteResumo(subtotal);
 
   if (state.cart.length === 0) {
     itemsEl.innerHTML = '<p class="cart-empty">Seu carrinho está vazio.</p>';
@@ -363,6 +370,119 @@ function updateCartUI() {
   itemsEl.querySelectorAll("[data-dec]").forEach((b) => b.addEventListener("click", () => changeQty(b.dataset.dec, -1)));
   itemsEl.querySelectorAll("[data-remove]").forEach((b) => b.addEventListener("click", () => removeFromCart(b.dataset.remove)));
 }
+
+/* ---------------------------------------------------------
+   Frete / área de entrega (centro de distribuição: FATEC Taubaté)
+--------------------------------------------------------- */
+function formatCep(digitos) {
+  const d = String(digitos || "").replace(/\D/g, "").slice(0, 8);
+  return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
+}
+
+function renderFreteResumo(subtotal) {
+  const freteLine = document.getElementById("cartFreteLine");
+  const freteEl = document.getElementById("cartFrete");
+  const totalEl = document.getElementById("cartTotal");
+  const btn = document.getElementById("checkoutBtn");
+  const hint = document.getElementById("checkoutHint");
+  if (!totalEl) return;
+
+  const f = state.frete;
+  let total = subtotal;
+  let podeFinalizar = state.cart.length > 0;
+  let msg = "";
+
+  if (f && f.entregavel) {
+    freteLine.hidden = false;
+    freteEl.textContent = f.valor === 0 ? "Grátis" : currency(f.valor);
+    total = subtotal + f.valor;
+  } else if (f && !f.entregavel) {
+    freteLine.hidden = true;
+    podeFinalizar = false;
+    msg = `Não entregamos no CEP ${formatCep(f.cep)} — ${f.distanciaKm} km da FATEC Taubaté (limite de 40 km).`;
+  } else {
+    freteLine.hidden = true;
+    podeFinalizar = false;
+    if (state.cart.length > 0) msg = "Calcule o frete para um CEP atendido para finalizar o pedido.";
+  }
+
+  totalEl.textContent = currency(total);
+  btn.disabled = !podeFinalizar;
+  hint.hidden = !msg;
+  hint.textContent = msg;
+}
+
+async function calcularFrete(cepDigitado) {
+  const resultEl = document.getElementById("freteResult");
+  const btn = document.getElementById("calcFreteBtn");
+  const cep = String(cepDigitado || "").replace(/\D/g, "");
+
+  if (cep.length !== 8) {
+    resultEl.hidden = false;
+    resultEl.className = "shipping-box__result is-error";
+    resultEl.textContent = "Digite um CEP válido (8 dígitos).";
+    return;
+  }
+
+  btn.disabled = true;
+  const rotuloOriginal = btn.textContent;
+  btn.textContent = "Calculando…";
+
+  try {
+    const res = await fetch("/api/checkout/shipping", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(window.FFAuth ? window.FFAuth.headers() : {}) },
+      body: JSON.stringify({ cep })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.erro || "Não foi possível calcular o frete.");
+
+    state.frete = {
+      cep: data.cep,
+      local: data.local,
+      distanciaKm: data.distanciaKm,
+      entregavel: data.entregavel,
+      valor: data.valor || 0,
+      prazoDiasUteis: data.prazoDiasUteis,
+      servico: data.servico
+    };
+    saveCart();
+
+    resultEl.hidden = false;
+    if (data.entregavel) {
+      resultEl.className = "shipping-box__result is-ok";
+      resultEl.textContent =
+        `✓ ${data.local} — cerca de ${data.distanciaKm} km da FATEC Taubaté. ` +
+        `Frete ${currency(data.valor)} · entrega em ${data.prazoDiasUteis} dia(s) útil(eis).`;
+    } else {
+      resultEl.className = "shipping-box__result is-error";
+      resultEl.textContent = `✗ ${data.mensagem}`;
+    }
+  } catch (err) {
+    resultEl.hidden = false;
+    resultEl.className = "shipping-box__result is-error";
+    resultEl.textContent = err.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = rotuloOriginal;
+    updateCartUI();
+  }
+}
+
+(function ligarFrete() {
+  const form = document.getElementById("freteForm");
+  const input = document.getElementById("cepFrete");
+  if (!form || !input) return;
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    calcularFrete(input.value);
+  });
+  input.addEventListener("input", () => {
+    input.value = formatCep(input.value);
+  });
+  if (state.frete && state.frete.cep) input.value = formatCep(state.frete.cep);
+})();
 
 /* ---------------------------------------------------------
    Travar rolagem de fundo + foco/Esc no carrinho e modais
@@ -471,6 +591,10 @@ document.getElementById("checkoutForm").addEventListener("submit", async (e) => 
     itens: state.cart.map((i) => ({ id: i.id, quantidade: i.quantidade })),
     formaPagamento: form.pagamento.value
   };
+  // Frete calculado no carrinho: o servidor revalida a área de entrega pelo CEP.
+  if (state.frete && state.frete.entregavel) {
+    payload.cep = state.frete.cep;
+  }
 
   try {
     const res = await fetch("/api/orders", {
@@ -693,5 +817,9 @@ document.querySelectorAll(".reveal").forEach((el) => observeReveal(el));
 initHeroStats();
 loadCartFromStorage();
 updateCartUI();
+{
+  const cepInput = document.getElementById("cepFrete");
+  if (cepInput && state.frete && state.frete.cep) cepInput.value = formatCep(state.frete.cep);
+}
 loadProducts();
 loadServices();

@@ -8,8 +8,27 @@ const repo = require("./orders.repository");
 const gateway = require("./payment.gateway");
 const produtosRepo = require("../products/products.repository");
 const cartService = require("../cart/cart.service");
+const checkoutService = require("../checkout/checkout.service");
 
 /* ----------------------------- helpers ----------------------------- */
+
+/**
+ * Define o frete do pedido. Se vier `cep`, recalcula no servidor (não confia
+ * no valor do cliente) e recusa o pedido se o endereço estiver fora do raio.
+ */
+function resolverFrete(body = {}) {
+  if (body.cep) {
+    const r = checkoutService.calcularFrete({ cep: body.cep });
+    if (!r.entregavel) {
+      throw new AppError(
+        `Não entregamos nesse CEP. ${r.mensagem} Retire na loja ou escolha outro endereço.`,
+        422
+      );
+    }
+    return { servico: r.servico, valor: r.valor, prazoDiasUteis: r.prazoDiasUteis };
+  }
+  return body.frete;
+}
 
 function ajustarEstoque(itens, sinal) {
   for (const item of itens) {
@@ -120,6 +139,7 @@ function criarParaUsuario(usuario, body = {}) {
   const usaCorpo = Array.isArray(body.itens) && body.itens.length > 0;
   const origem = usaCorpo ? body.itens : cartService.registroBruto(usuario.id).itens;
   const { itens, subtotal } = montarItens(origem);
+  const frete = resolverFrete(body);
 
   const clienteBody = body.cliente || {};
   const pedido = criarPedido({
@@ -137,7 +157,7 @@ function criarParaUsuario(usuario, body = {}) {
       (usuario.enderecos && usuario.enderecos[0]) ||
       null,
     formaPagamento: body.formaPagamento || "pix",
-    frete: body.frete
+    frete
   });
 
   if (!usaCorpo) cartService.limpar(usuario.id);
@@ -151,6 +171,7 @@ function criarComoVisitante(body = {}) {
     throw new AppError("Informe nome e telefone do cliente.");
   }
   const { itens, subtotal } = montarItens(itensEntrada);
+  const frete = resolverFrete(body);
 
   return criarPedido({
     usuarioId: null,
@@ -163,7 +184,7 @@ function criarComoVisitante(body = {}) {
     subtotal,
     enderecoEntrega: cliente.endereco || null,
     formaPagamento: formaPagamento || "pix",
-    frete: body.frete
+    frete
   });
 }
 

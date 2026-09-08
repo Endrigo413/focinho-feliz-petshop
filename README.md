@@ -153,7 +153,7 @@ petshop/
 │       ├── products/            # + products.repository
 │       ├── categories/
 │       ├── cart/
-│       ├── checkout/
+│       ├── checkout/            # + geo.js (CEP → distância até a FATEC Taubaté)
 │       ├── orders/              # + orders.repository · payment.gateway
 │       └── services/            # services + appointments
 └── public/                      # front-end estático
@@ -222,10 +222,15 @@ Base: `/api`. Corpo e respostas em JSON. Rotas protegidas exigem o header
 
 ### Pedidos, Frete e Pagamento
 
+**Área de entrega**: centro de distribuição na **FATEC Taubaté**. Entregamos
+num raio de **40 km** (distância em linha reta até o centro do CEP), a
+**R$ 0,59 por km**. Fora do raio, o pedido é recusado (`422`). O cálculo usa
+uma tabela de faixas de CEP → coordenadas (`src/modules/checkout/geo.js`).
+
 | Método | Rota | Acesso | Descrição |
 |---|---|---|---|
-| POST | `/api/checkout/shipping` | público | Calcula opções de frete e prazo pelo `cep` |
-| POST | `/api/orders` | cliente **ou** visitante | Com token: fecha o carrinho. Sem token: aceita `{ cliente, itens }` (compatível com a v1) |
+| POST | `/api/checkout/shipping` | público | `{ cep }` → `{ distanciaKm, entregavel, valor, prazoDiasUteis, mensagem }` |
+| POST | `/api/orders` | cliente **ou** visitante | Com token: fecha o carrinho. Sem token: aceita `{ cliente, itens }` (v1). Se enviar `cep`, o servidor recalcula o frete e recusa endereços fora da área |
 | GET | `/api/orders` | cliente | Histórico de pedidos do usuário logado |
 | GET | `/api/orders/:id` | dono / admin / pedido de visitante | Detalhe e rastreamento de um pedido |
 | POST | `/api/orders/webhook` | gateway (assinatura HMAC) | Recebe atualizações de status do pagamento |
@@ -263,14 +268,16 @@ curl -X POST localhost:3000/api/cart/items \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"produtoId":"p01","quantidade":1}'
 
-# 4. calcular frete
+# 4. calcular frete / testar a área de entrega
 curl -X POST localhost:3000/api/checkout/shipping \
-  -H 'Content-Type: application/json' -d '{"cep":"01001-000"}'
+  -H 'Content-Type: application/json' -d '{"cep":"12080-000"}'   # Taubaté → entrega
+curl -X POST localhost:3000/api/checkout/shipping \
+  -H 'Content-Type: application/json' -d '{"cep":"01310-100"}'   # SP capital → fora da área
 
-# 5. fechar o pedido (gera a cobrança Pix)
+# 5. fechar o pedido (o servidor recalcula o frete pelo CEP e gera a cobrança Pix)
 curl -X POST localhost:3000/api/orders \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d '{"formaPagamento":"pix","frete":{"servico":"PAC","valor":19.9}}'
+  -d '{"itens":[{"id":"p01","quantidade":1}],"formaPagamento":"pix","cep":"12400-000"}'
 ```
 
 Simular o webhook do gateway (a assinatura é HMAC-SHA256 do corpo com
@@ -293,6 +300,9 @@ Eventos suportados: `payment.approved`, `payment.pending`, `payment.failed`,
 - Vitrine de produtos com busca por texto e filtros por categoria/espécie
 - Badge de "Destaque" e aviso/bloqueio de "Esgotado"
 - Carrinho lateral com controle de quantidade e persistência local (`localStorage`)
+- **Caixa de frete dentro do carrinho**: digita o CEP, mostra a distância até a
+  FATEC Taubaté, o valor do frete e o prazo — ou avisa que está fora da área de
+  entrega e bloqueia o "Finalizar pedido"
 - Checkout com formulário de dados do cliente (enviado à API)
 - Vitrine de serviços com agendamento por modal (não aceita datas passadas)
 - Animações com respeito a `prefers-reduced-motion` e layout responsivo
