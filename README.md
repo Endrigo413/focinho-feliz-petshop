@@ -39,6 +39,15 @@ Recriar o banco do zero:
 npm run seed
 ```
 
+Rodar a suíte de testes ponta-a-ponta (com o servidor no ar em outro terminal):
+
+```bash
+npm test        # 35 casos: funcionais, integração, segurança, desempenho
+```
+
+Plano de testes, planilha de resultados e recomendações em
+[`docs/TESTES.md`](docs/TESTES.md).
+
 Configuração opcional: copie `.env.example` para `.env`. Tudo tem valor
 padrão — a aplicação sobe sem nenhuma variável de ambiente.
 
@@ -86,6 +95,8 @@ camada de regras de negócio subdividida em **módulos de serviço** por domíni
 - [`docs/DOCUMENTACAO.md`](docs/DOCUMENTACAO.md) — documentação de engenharia:
   visão geral, requisitos (RF/RNF), arquitetura, modelagem de dados e os
   diagramas (casos de uso, DER, sequência).
+- [`docs/TESTES.md`](docs/TESTES.md) — plano de testes, planilha de resultados
+  (`docs/resultados-testes.csv`) e sugestões de melhoria.
 - [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md) — arquitetura detalhada, com
   diagrama de camadas e fluxos.
 

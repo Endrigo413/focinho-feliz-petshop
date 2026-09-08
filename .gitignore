@@ -4,3 +4,7 @@ data/emails/
 .env
 *.log
 .DS_Store
+
+# saída da suíte de testes rodada localmente (a versão de referência fica em docs/)
+/resultados-testes.csv
+/resultados-testes.json
