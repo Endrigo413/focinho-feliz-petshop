@@ -28,7 +28,7 @@ router.post(
   autenticarOpcional,
   asyncHandler(async (req, res) => {
     const pedido = req.usuario
-      ? service.criarDoCarrinho(req.usuario, req.body || {})
+      ? service.criarParaUsuario(req.usuario, req.body || {})
       : service.criarComoVisitante(req.body || {});
     res.status(201).json(pedido);
   })

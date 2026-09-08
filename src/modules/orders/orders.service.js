@@ -115,25 +115,32 @@ function criarPedido({ usuarioId, cliente, itens, subtotal, enderecoEntrega, for
 /* --------------------------- casos de uso --------------------------- */
 
 /** POST /api/orders autenticado: fecha o carrinho do usuário. */
-function criarDoCarrinho(usuario, body = {}) {
-  const carrinho = cartService.registroBruto(usuario.id);
-  const { itens, subtotal } = montarItens(carrinho.itens);
+function criarParaUsuario(usuario, body = {}) {
+  // Dois modos: itens no corpo (carrinho do front-end) OU carrinho do servidor.
+  const usaCorpo = Array.isArray(body.itens) && body.itens.length > 0;
+  const origem = usaCorpo ? body.itens : cartService.registroBruto(usuario.id).itens;
+  const { itens, subtotal } = montarItens(origem);
 
+  const clienteBody = body.cliente || {};
   const pedido = criarPedido({
     usuarioId: usuario.id,
     cliente: {
-      nome: usuario.nome,
+      nome: clienteBody.nome || usuario.nome,
       email: usuario.email,
-      telefone: body.telefone || usuario.telefone || ""
+      telefone: clienteBody.telefone || body.telefone || usuario.telefone || ""
     },
     itens,
     subtotal,
-    enderecoEntrega: body.enderecoEntrega || (usuario.enderecos && usuario.enderecos[0]) || null,
+    enderecoEntrega:
+      body.enderecoEntrega ||
+      clienteBody.endereco ||
+      (usuario.enderecos && usuario.enderecos[0]) ||
+      null,
     formaPagamento: body.formaPagamento || "pix",
     frete: body.frete
   });
 
-  cartService.limpar(usuario.id);
+  if (!usaCorpo) cartService.limpar(usuario.id);
   return pedido;
 }
 
@@ -244,7 +251,7 @@ function processarWebhook({ rawBody, assinatura, evento }) {
 }
 
 module.exports = {
-  criarDoCarrinho,
+  criarParaUsuario,
   criarComoVisitante,
   listarHistorico,
   obterParaUsuario,

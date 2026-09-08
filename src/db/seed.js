@@ -53,6 +53,8 @@ function construirAdmin() {
     email: config.admin.email.toLowerCase(),
     senhaHash: gerarHash(config.admin.senha),
     papel: "admin",
+    status: "ativo", // admin já nasce confirmado
+    emailVerificadoEm: agora,
     telefone: "",
     enderecos: [],
     criadoEm: agora,
@@ -73,7 +75,8 @@ function executarSeed({ forcar = false } = {}) {
     carrinhos: [],
     pedidos: [],
     agendamentos: [],
-    eventosPagamento: []
+    eventosPagamento: [],
+    codigos: []
   });
 
   return { pulado: false };

@@ -35,13 +35,36 @@
       <a href="#contato">Contato</a>
     </nav>
 
-    <button class="cart-toggle" id="cartToggle" aria-haspopup="dialog" aria-controls="cartDrawer">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h15l-1.5 9h-12L6 3H3" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="20" r="1.4" fill="currentColor"/><circle cx="18" cy="20" r="1.4" fill="currentColor"/></svg>
-      <span>Carrinho</span>
-      <span class="cart-toggle__count" id="cartCount">0</span>
-    </button>
+    <div class="header-actions">
+      <div class="account" id="account">
+        <button class="btn btn--ghost btn--small" id="btnEntrar">Entrar</button>
+        <div class="account__menu" id="accountMenu" hidden>
+          <button class="account__trigger" id="accountTrigger" aria-haspopup="menu">
+            <span class="account__avatar" id="accountInitial">?</span>
+            <span class="account__name" id="accountName">—</span>
+            <span class="account__badge" id="accountAdminBadge" hidden>ADMIN</span>
+          </button>
+          <div class="account__dropdown" id="accountDropdown" role="menu" hidden>
+            <p class="account__email" id="accountEmail"></p>
+            <button type="button" id="btnMinhaConta" role="menuitem">Meus pedidos</button>
+            <button type="button" id="btnSair" role="menuitem">Sair</button>
+          </div>
+        </div>
+      </div>
+
+      <button class="cart-toggle" id="cartToggle" aria-haspopup="dialog" aria-controls="cartDrawer">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h15l-1.5 9h-12L6 3H3" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="20" r="1.4" fill="currentColor"/><circle cx="18" cy="20" r="1.4" fill="currentColor"/></svg>
+        <span>Carrinho</span>
+        <span class="cart-toggle__count" id="cartCount">0</span>
+      </button>
+    </div>
   </div>
 </header>
+
+<div class="adminbar" id="adminBar" hidden>
+  <span class="adminbar__dot" aria-hidden="true"></span>
+  Você está conectado como <strong>administrador</strong>. Painel administrativo dedicado em breve.
+</div>
 
 <main id="conteudo">
 
@@ -286,10 +309,109 @@
   </form>
 </dialog>
 
+<!-- Modal de autenticação (login / cadastro / código / senha) -->
+<dialog class="modal auth-modal" id="authModal">
+  <div class="modal__form">
+    <div class="modal__head">
+      <h2 id="authTitle">Entrar</h2>
+      <button type="button" class="modal__close" data-close-modal>✕</button>
+    </div>
+
+    <form data-panel="login" class="auth-panel">
+      <label>E-mail
+        <input type="email" name="email" autocomplete="email" required />
+      </label>
+      <label>Senha
+        <input type="password" name="senha" autocomplete="current-password" required />
+      </label>
+      <button type="submit" class="btn btn--primary btn--block">Entrar</button>
+      <p class="auth-links">
+        <button type="button" class="linkbtn" data-goto="esqueci">Esqueci minha senha</button>
+        <span aria-hidden="true">·</span>
+        <button type="button" class="linkbtn" data-goto="cadastro">Criar uma conta</button>
+      </p>
+      <p class="modal__feedback" data-feedback role="status"></p>
+    </form>
+
+    <form data-panel="cadastro" class="auth-panel" hidden>
+      <label>Nome completo
+        <input type="text" name="nome" autocomplete="name" required />
+      </label>
+      <label>E-mail
+        <input type="email" name="email" autocomplete="email" required />
+      </label>
+      <label>Telefone / WhatsApp (opcional)
+        <input type="tel" name="telefone" autocomplete="tel" placeholder="(11) 90000-0000" />
+      </label>
+      <label>Senha (mínimo 6 caracteres)
+        <input type="password" name="senha" autocomplete="new-password" minlength="6" required />
+      </label>
+      <button type="submit" class="btn btn--primary btn--block">Criar conta</button>
+      <p class="auth-links">
+        <button type="button" class="linkbtn" data-goto="login">Já tenho conta</button>
+      </p>
+      <p class="modal__feedback" data-feedback role="status"></p>
+    </form>
+
+    <form data-panel="codigo" class="auth-panel" hidden>
+      <p class="auth-hint">Digite o código de 6 dígitos que enviamos para
+        <strong data-alvo-email>seu e-mail</strong>.</p>
+      <label>Código de confirmação
+        <input type="text" name="codigo" inputmode="numeric" pattern="[0-9]*" maxlength="6"
+               autocomplete="one-time-code" required />
+      </label>
+      <button type="submit" class="btn btn--primary btn--block">Confirmar e entrar</button>
+      <p class="auth-links">
+        <button type="button" class="linkbtn" data-goto="reenviar">Reenviar código</button>
+        <span aria-hidden="true">·</span>
+        <button type="button" class="linkbtn" data-goto="login">Voltar ao login</button>
+      </p>
+      <p class="modal__feedback" data-feedback role="status"></p>
+    </form>
+
+    <form data-panel="esqueci" class="auth-panel" hidden>
+      <p class="auth-hint">Informe seu e-mail e enviaremos um código para você criar uma nova senha.</p>
+      <label>E-mail
+        <input type="email" name="email" autocomplete="email" required />
+      </label>
+      <button type="submit" class="btn btn--primary btn--block">Enviar código</button>
+      <p class="auth-links">
+        <button type="button" class="linkbtn" data-goto="login">Voltar ao login</button>
+      </p>
+      <p class="modal__feedback" data-feedback role="status"></p>
+    </form>
+
+    <form data-panel="redefinir" class="auth-panel" hidden>
+      <p class="auth-hint">Código enviado para <strong data-alvo-email>seu e-mail</strong>.</p>
+      <label>Código
+        <input type="text" name="codigo" inputmode="numeric" pattern="[0-9]*" maxlength="6" required />
+      </label>
+      <label>Nova senha (mínimo 6 caracteres)
+        <input type="password" name="novaSenha" autocomplete="new-password" minlength="6" required />
+      </label>
+      <button type="submit" class="btn btn--primary btn--block">Redefinir e entrar</button>
+      <p class="modal__feedback" data-feedback role="status"></p>
+    </form>
+  </div>
+</dialog>
+
+<!-- Modal "Meus pedidos" -->
+<dialog class="modal" id="accountModal">
+  <div class="modal__form">
+    <div class="modal__head">
+      <h2>Meus pedidos</h2>
+      <button type="button" class="modal__close" data-close-account>✕</button>
+    </div>
+    <p class="modal__hint" id="accountModalHint">Carregando…</p>
+    <div class="orders-list" id="ordersList"></div>
+  </div>
+</dialog>
+
 <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
 
 <button class="back-to-top" id="backToTop" aria-label="Voltar ao topo">↑</button>
 
+<script src="/js/auth.js"></script>
 <script src="/js/main.js"></script>
 </body>
 </html>

@@ -23,10 +23,33 @@ const config = {
     nome: "Administrador Focinho Feliz"
   },
 
+  email: {
+    // Identidade do remetente (troque em produção via MAIL_FROM).
+    remetente: process.env.MAIL_FROM || "Focinho Feliz <LivrariaLeitura01@gmail.com>",
+    // SMTP opcional. Sem SMTP_HOST, o e-mail é gravado em data/emails/*.txt
+    // e o código também aparece no console (modo dev).
+    smtp: {
+      host: process.env.SMTP_HOST || "",
+      porta: Number(process.env.SMTP_PORT) || 587,
+      seguro: process.env.SMTP_SECURE === "true",
+      usuario: process.env.SMTP_USER || "",
+      senha: process.env.SMTP_PASS || ""
+    }
+  },
+
+  codigos: {
+    // Códigos de confirmação de e-mail / redefinição de senha.
+    tamanho: 6,
+    expiraEmMinutos: Number(process.env.CODE_TTL_MIN) || 15,
+    maxTentativas: 5,
+    reenvioIntervaloSegundos: 60
+  },
+
   paths: {
     raiz: path.resolve(__dirname, "..", ".."),
     publico: path.resolve(__dirname, "..", "..", "public"),
-    bancoJson: path.resolve(__dirname, "..", "..", "data", "db.json")
+    bancoJson: path.resolve(__dirname, "..", "..", "data", "db.json"),
+    emailsDev: path.resolve(__dirname, "..", "..", "data", "emails")
   },
 
   paginacao: {

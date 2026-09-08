@@ -20,7 +20,8 @@ const COLECOES_PADRAO = () => ({
   carrinhos: [], // { usuarioId, itens: [{ produtoId, quantidade }], atualizadoEm }
   pedidos: [],
   agendamentos: [],
-  eventosPagamento: [] // idempotência de webhooks
+  eventosPagamento: [], // idempotência de webhooks
+  codigos: [] // códigos de confirmação de e-mail / redefinição de senha
 });
 
 let dados = null;

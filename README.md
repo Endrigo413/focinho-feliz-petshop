@@ -44,6 +44,40 @@ padrão — a aplicação sobe sem nenhuma variável de ambiente.
 
 ---
 
+## Contas, login e confirmação por e-mail
+
+- **Cadastro e login** são exigidos para **adicionar ao carrinho, finalizar
+  a compra, agendar serviços e ver "Meus pedidos"**. A vitrine de produtos e
+  serviços continua pública.
+- Ao criar a conta, o usuário recebe um **código de 6 dígitos por e-mail** e
+  precisa confirmá-lo antes do primeiro login (a conta nasce `pendente`).
+- Mesma mecânica de código para **redefinir a senha** (esqueci minha senha).
+- **Admin**: a conta `admin@focinhofeliz.com.br` já nasce confirmada. Ao entrar
+  com ela, o site mostra uma barra "Você está conectado como administrador"
+  (o painel administrativo dedicado ainda será construído).
+
+### E-mail — modo dev (padrão)
+
+Sem `SMTP_HOST` no `.env`, o sistema **não envia e-mail de verdade**: cada
+mensagem é gravada em `data/emails/*.txt` e o código também aparece **no
+console do servidor** e na própria tela (dica "modo dev"). Assim dá para
+testar todo o fluxo sem configurar nada.
+
+Para enviar de verdade pelo Gmail:
+
+```bash
+npm install nodemailer          # dependência opcional
+# no .env:
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=LivrariaLeitura01@gmail.com
+SMTP_PASS=<senha de app de 16 dígitos>
+```
+
+(Gere a "Senha de app" em *Conta Google → Segurança → Senhas de app*.)
+
+---
+
 ## Arquitetura de software
 
 O sistema segue a arquitetura clássica de e-commerce em **três camadas**, com a
@@ -87,7 +121,7 @@ Detalhes e diagrama em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
 |---|---|---|
 | **API Gateway** | `src/gateway/router.js` | Ponto de entrada único; recebe as requisições e direciona para o serviço correto |
 | **Serviço de Produtos** | `src/modules/products/` + `categories/` | Catálogo, preços, estoque, categorias |
-| **Serviço de Clientes** | `src/modules/auth/` + `users/` | Cadastro, login (JWT), perfil e endereços de entrega |
+| **Serviço de Clientes** | `src/modules/auth/` + `users/` | Cadastro, confirmação de e-mail por código, login (JWT), redefinição de senha, perfil e endereços |
 | **Serviço de Pedidos e Pagamento** | `src/modules/orders/` + `checkout/` | Fechamento do carrinho, frete, cobrança, atualização de status via webhook |
 | **Serviço da Clínica** | `src/modules/services/` | Catálogo de banho/tosa/veterinário e agendamentos |
 | **Armazenamento** | `src/db/` | Persistência (JSON) e seed inicial |
@@ -104,16 +138,17 @@ petshop/
 ├── data/
 │   ├── products.js              # catálogo semente de produtos
 │   ├── services.js              # catálogo de serviços da clínica
-│   └── db.json                  # banco (gerado; fora do git)
+│   ├── db.json                  # banco (gerado; fora do git)
+│   └── emails/                  # e-mails "enviados" em modo dev (fora do git)
 ├── src/
 │   ├── app.js                   # monta o Express (middlewares + gateway)
 │   ├── config/                  # configuração + carregador de .env
 │   ├── gateway/router.js        # API Gateway
-│   ├── lib/                     # jwt, hash de senha, ids, AppError
+│   ├── lib/                     # jwt, senha, codigo, email, ids, AppError
 │   ├── middleware/              # auth, admin, erro, asyncHandler
 │   ├── db/                      # store (persistência) + seed
 │   └── modules/
-│       ├── auth/                # auth.routes · auth.service
+│       ├── auth/                # auth.routes · auth.service · verification.service
 │       ├── users/               # + users.repository
 │       ├── products/            # + products.repository
 │       ├── categories/
@@ -121,14 +156,20 @@ petshop/
 │       ├── checkout/
 │       ├── orders/              # + orders.repository · payment.gateway
 │       └── services/            # services + appointments
-└── public/                      # front-end estático (index.html, css, js)
+└── public/                      # front-end estático
+    ├── index.html
+    ├── js/auth.js               # login/cadastro/código/senha (window.FFAuth)
+    ├── js/main.js               # vitrine, carrinho, checkout, agendamento
+    └── css/style.css
 ```
 
 ### Decisões de projeto
 
-- **Sem dependências além do Express.** JWT (HS256) e hash de senha (scrypt)
-  usam só o módulo `crypto` do Node. Em produção, troque por `jsonwebtoken` /
-  `bcrypt` e um banco real.
+- **Sem dependências além do Express.** JWT (HS256), hash de senha e de códigos
+  (scrypt) usam só o módulo `crypto` do Node. `nodemailer` é opcional (só para
+  SMTP real). Em produção, troque por `jsonwebtoken` / `bcrypt` e um banco real.
+- **Confirmação de e-mail obrigatória**: conta nasce `pendente`; códigos de
+  6 dígitos com validade, limite de tentativas e reenvio com _throttle_.
 - **Remoção lógica de produtos** (`ativo: false`) para não quebrar o histórico
   de pedidos.
 - **Gateway de pagamento simulado** (`src/modules/orders/payment.gateway.js`)
@@ -146,10 +187,18 @@ Base: `/api`. Corpo e respostas em JSON. Rotas protegidas exigem o header
 
 | Método | Rota | Acesso | Descrição |
 |---|---|---|---|
-| POST | `/api/auth/register` | público | Cria conta de cliente e retorna o token JWT |
-| POST | `/api/auth/login` | público | Autentica e retorna o token JWT |
+| POST | `/api/auth/register` | público | Cria conta (`status: pendente`) e envia código por e-mail. **Não** retorna token |
+| POST | `/api/auth/verify-email` | público | Confirma o cadastro com `{ email, codigo }` e retorna o token JWT |
+| POST | `/api/auth/resend-code` | público | Reenvia o código — `{ email, proposito }` (`confirmar_email` \| `redefinir_senha`) |
+| POST | `/api/auth/login` | público | Autentica e retorna o token JWT. Se o e-mail não foi confirmado, responde `403` com `detalhes.precisaConfirmar` |
+| POST | `/api/auth/forgot-password` | público | Envia código para redefinir a senha — `{ email }` |
+| POST | `/api/auth/reset-password` | público | Troca a senha com `{ email, codigo, novaSenha }` e retorna o token |
 | GET | `/api/users/profile` | cliente | Dados do usuário logado |
 | PUT | `/api/users/profile` | cliente | Atualiza nome, telefone e endereços |
+
+> Em **modo dev** (sem SMTP), as respostas de `register` / `resend-code` /
+> `forgot-password` incluem `codigoDev` para facilitar o teste. Isso nunca
+> acontece com SMTP real configurado.
 
 ### Produtos e Categorias
 
@@ -197,22 +246,28 @@ Descoberta: `GET /api/` lista os serviços; `GET /api/health` é o healthcheck.
 ## Exemplos rápidos (cURL)
 
 ```bash
-# 1. registrar e guardar o token
-TOKEN=$(curl -s -X POST localhost:3000/api/auth/register \
+# 1. registrar — retorna { precisaConfirmar, codigoDev } no modo dev
+REG=$(curl -s -X POST localhost:3000/api/auth/register \
   -H 'Content-Type: application/json' \
-  -d '{"nome":"Ana Souza","email":"ana@ex.com","senha":"segredo123"}' \
+  -d '{"nome":"Ana Souza","email":"ana@ex.com","senha":"segredo123"}')
+CODIGO=$(echo "$REG" | node -pe 'JSON.parse(require("fs").readFileSync(0)).codigoDev')
+
+# 2. confirmar o e-mail com o código → agora sim vem o token
+TOKEN=$(curl -s -X POST localhost:3000/api/auth/verify-email \
+  -H 'Content-Type: application/json' \
+  -d "{\"email\":\"ana@ex.com\",\"codigo\":\"$CODIGO\"}" \
   | node -pe 'JSON.parse(require("fs").readFileSync(0)).accessToken')
 
-# 2. adicionar ao carrinho
+# 3. adicionar ao carrinho
 curl -X POST localhost:3000/api/cart/items \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"produtoId":"p01","quantidade":1}'
 
-# 3. calcular frete
+# 4. calcular frete
 curl -X POST localhost:3000/api/checkout/shipping \
   -H 'Content-Type: application/json' -d '{"cep":"01001-000"}'
 
-# 4. fechar o pedido (gera a cobrança Pix)
+# 5. fechar o pedido (gera a cobrança Pix)
 curl -X POST localhost:3000/api/orders \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"formaPagamento":"pix","frete":{"servico":"PAC","valor":19.9}}'

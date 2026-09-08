@@ -266,6 +266,9 @@ function bumpCartIcon() {
 }
 
 function addToCart(id, btnEl) {
+  // Carrinho exige login (o checkout também).
+  if (window.FFAuth && !window.FFAuth.exigirLogin(() => addToCart(id))) return;
+
   const produto = state.products.find((p) => p.id === id);
   if (!produto || produto.estoque <= 0) return;
 
@@ -368,7 +371,8 @@ function isAnyOverlayOpen() {
   return (
     document.getElementById("cartDrawer").classList.contains("open") ||
     checkoutModal.open ||
-    bookingModal.open
+    bookingModal.open ||
+    (accountModal && accountModal.open)
   );
 }
 
@@ -411,7 +415,10 @@ function closeCart() {
   if (lastFocusedBeforeCart) lastFocusedBeforeCart.focus();
 }
 
-document.getElementById("cartToggle").addEventListener("click", openCart);
+document.getElementById("cartToggle").addEventListener("click", () => {
+  if (window.FFAuth && !window.FFAuth.exigirLogin(() => openCart())) return;
+  openCart();
+});
 document.getElementById("cartClose").addEventListener("click", closeCart);
 document.getElementById("overlay").addEventListener("click", closeCart);
 
@@ -420,6 +427,7 @@ document.getElementById("overlay").addEventListener("click", closeCart);
 --------------------------------------------------------- */
 const checkoutModal = document.getElementById("checkoutModal");
 const bookingModal = document.getElementById("bookingModal");
+const accountModal = document.getElementById("accountModal");
 
 function openDialog(dialog) {
   dialog.showModal();
@@ -434,7 +442,8 @@ function closeDialogAnimated(dialog) {
   }, 180);
 }
 
-[checkoutModal, bookingModal].forEach((dlg) => {
+[checkoutModal, bookingModal, accountModal].forEach((dlg) => {
+  if (!dlg) return;
   dlg.addEventListener("close", () => {
     dlg.classList.remove("modal--visible");
     refreshScrollLock();
@@ -443,6 +452,7 @@ function closeDialogAnimated(dialog) {
 
 document.getElementById("checkoutBtn").addEventListener("click", () => {
   if (state.cart.length === 0) return;
+  if (window.FFAuth && !window.FFAuth.exigirLogin()) return;
   document.getElementById("orderFeedback").textContent = "";
   document.getElementById("orderFeedback").className = "modal__feedback";
   openDialog(checkoutModal);
@@ -465,7 +475,7 @@ document.getElementById("checkoutForm").addEventListener("submit", async (e) => 
   try {
     const res = await fetch("/api/orders", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(window.FFAuth ? window.FFAuth.headers() : {}) },
       body: JSON.stringify(payload)
     });
     const data = await res.json();
@@ -492,6 +502,8 @@ document.getElementById("checkoutForm").addEventListener("submit", async (e) => 
    Agendamento de serviços
 --------------------------------------------------------- */
 function openBookingModal(servicoId) {
+  if (window.FFAuth && !window.FFAuth.exigirLogin(() => openBookingModal(servicoId))) return;
+
   const servico = state.services.find((s) => s.id === servicoId);
   if (!servico) return;
   document.getElementById("bookingTitle").textContent = `Agendar: ${servico.nome}`;
@@ -517,7 +529,7 @@ document.getElementById("bookingForm").addEventListener("submit", async (e) => {
   try {
     const res = await fetch("/api/appointments", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(window.FFAuth ? window.FFAuth.headers() : {}) },
       body: JSON.stringify(payload)
     });
     const data = await res.json();
@@ -613,6 +625,66 @@ if (backToTop) {
     window.scrollTo({ top: 0, behavior: prefersReducedMotion ? "auto" : "smooth" });
   });
 }
+
+/* ---------------------------------------------------------
+   Integração com a autenticação (auth.js)
+--------------------------------------------------------- */
+window.showToast = showToast; // usado por auth.js
+
+// Prefill dos formulários com os dados do usuário logado
+document.addEventListener("ff:auth-change", (e) => {
+  const u = e.detail && e.detail.usuario;
+  if (!u) return;
+  document
+    .querySelectorAll('#checkoutForm input[name="nome"], #bookingForm input[name="nome"]')
+    .forEach((n) => {
+      if (!n.value) n.value = u.nome;
+    });
+  document
+    .querySelectorAll('#checkoutForm input[name="telefone"], #bookingForm input[name="telefone"]')
+    .forEach((t) => {
+      if (!t.value && u.telefone) t.value = u.telefone;
+    });
+});
+
+// Modal "Meus pedidos"
+document.querySelectorAll("[data-close-account]").forEach((b) => {
+  b.addEventListener("click", () => closeDialogAnimated(accountModal));
+});
+
+window.abrirMinhaConta = async function () {
+  const hint = document.getElementById("accountModalHint");
+  const list = document.getElementById("ordersList");
+  list.innerHTML = "";
+  hint.textContent = "Carregando…";
+  openDialog(accountModal);
+  try {
+    const data = await window.FFAuth.api("/orders", { auth: true });
+    if (!data.pedidos || data.pedidos.length === 0) {
+      hint.textContent = "Você ainda não fez nenhum pedido.";
+      return;
+    }
+    hint.textContent = `${data.total} pedido(s) na sua conta.`;
+    list.innerHTML = data.pedidos
+      .map(
+        (p) => `
+      <div class="order-row">
+        <div class="order-row__id">
+          <strong>${p.id}</strong>
+          <span>${new Date(p.criadoEm).toLocaleDateString("pt-BR")}</span>
+        </div>
+        <div class="order-row__meta">
+          <span class="order-status">${p.status}</span>
+          <span class="order-row__total">${currency(p.total)}</span>
+        </div>
+      </div>`
+      )
+      .join("");
+  } catch (err) {
+    console.error(err);
+    hint.textContent = "Não foi possível carregar seus pedidos agora.";
+  }
+};
 
 /* ---------------------------------------------------------
    Inicialização
