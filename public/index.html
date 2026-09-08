@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Focinho Feliz — Pet Shop &amp; Clínica</title>
+<meta name="description" content="Produtos e serviços para o seu melhor amigo: ração, banho e tosa, veterinário, hospedagem e muito mais." />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+<a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <a href="#topo" class="brand">
+      <svg class="brand__mark" viewBox="0 0 48 48" aria-hidden="true">
+        <path d="M24 27c-6.5 0-13 5.1-13 10.4 0 2.6 2.1 4.1 5 3.6 2.6-.5 5.1-1.7 8-1.7s5.4 1.2 8 1.7c2.9.5 5-1 5-3.6C37 32.1 30.5 27 24 27Z" fill="currentColor"/>
+        <ellipse cx="12.5" cy="18" rx="4.3" ry="5.4" fill="currentColor"/>
+        <ellipse cx="35.5" cy="18" rx="4.3" ry="5.4" fill="currentColor"/>
+        <ellipse cx="19.5" cy="10.5" rx="3.6" ry="4.6" fill="currentColor"/>
+        <ellipse cx="28.5" cy="10.5" rx="3.6" ry="4.6" fill="currentColor"/>
+      </svg>
+      <span class="brand__text">Focinho Feliz</span>
+    </a>
+
+    <nav class="mainnav" aria-label="Navegação principal">
+      <a href="#produtos">Produtos</a>
+      <a href="#servicos">Serviços</a>
+      <a href="#sobre">Sobre</a>
+      <a href="#contato">Contato</a>
+    </nav>
+
+    <button class="cart-toggle" id="cartToggle" aria-haspopup="dialog" aria-controls="cartDrawer">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h15l-1.5 9h-12L6 3H3" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="20" r="1.4" fill="currentColor"/><circle cx="18" cy="20" r="1.4" fill="currentColor"/></svg>
+      <span>Carrinho</span>
+      <span class="cart-toggle__count" id="cartCount">0</span>
+    </button>
+  </div>
+</header>
+
+<main id="conteudo">
+
+  <section class="hero" id="topo">
+    <div class="hero__text">
+      <p class="hero__kicker">Loja e clínica de bairro, desde 2014</p>
+      <h1>Cuidado de verdade para quem<br>já cuida de você todos os dias.</h1>
+      <p class="hero__lede">
+        Ração, banho e tosa, veterinário e hospedagem em um só lugar.
+        Peça pela internet ou agende um horário — nós cuidamos do resto.
+      </p>
+      <div class="hero__actions">
+        <a href="#produtos" class="btn btn--primary">Ver produtos</a>
+        <a href="#servicos" class="btn btn--ghost">Agendar serviço</a>
+      </div>
+      <dl class="hero__stats">
+        <div><dt data-count-target="12" data-count-prefix="+" data-count-suffix=" anos">+0 anos</dt><dd>de bairro</dd></div>
+        <div><dt data-count-target="3" data-count-suffix=" veterinários">0 veterinários</dt><dd>no time</dd></div>
+        <div><dt data-count-target="4.9" data-count-decimals="1" data-count-suffix=" / 5">0,0 / 5</dt><dd>avaliação média</dd></div>
+      </dl>
+    </div>
+    <div class="hero__art" aria-hidden="true">
+      <svg viewBox="0 0 480 480" class="hero__svg">
+        <circle cx="240" cy="240" r="210" fill="var(--sage)" opacity="0.35"/>
+        <g transform="translate(60,120)">
+          <ellipse cx="90" cy="180" rx="85" ry="60" fill="var(--marigold)"/>
+          <circle cx="90" cy="95" r="62" fill="var(--marigold)"/>
+          <path d="M40 55 L20 5 L65 40 Z" fill="var(--marigold)"/>
+          <path d="M140 55 L160 5 L115 40 Z" fill="var(--marigold)"/>
+          <circle cx="70" cy="90" r="6" fill="var(--ink)"/>
+          <circle cx="112" cy="90" r="6" fill="var(--ink)"/>
+          <ellipse cx="91" cy="112" rx="10" ry="7" fill="var(--ink)"/>
+        </g>
+        <g transform="translate(250,150)">
+          <ellipse cx="80" cy="170" rx="72" ry="55" fill="var(--terracotta)"/>
+          <circle cx="80" cy="88" r="55" fill="var(--terracotta)"/>
+          <path d="M35 60 Q20 20 45 30 Q45 55 55 60 Z" fill="var(--terracotta)"/>
+          <path d="M125 60 Q140 20 115 30 Q115 55 105 60 Z" fill="var(--terracotta)"/>
+          <circle cx="63" cy="86" r="5.5" fill="var(--ink)"/>
+          <circle cx="98" cy="86" r="5.5" fill="var(--ink)"/>
+          <path d="M70 104 Q80 112 90 104" stroke="var(--ink)" stroke-width="3" fill="none" stroke-linecap="round"/>
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <section class="strip reveal" aria-label="Diferenciais rápidos">
+    <div class="strip__item"><span>🚚</span>Entrega no mesmo dia</div>
+    <div class="strip__item"><span>🩺</span>Equipe veterinária própria</div>
+    <div class="strip__item"><span>🛁</span>Banho e tosa sem sedação</div>
+    <div class="strip__item"><span>💳</span>Parcelamento em até 6x</div>
+  </section>
+
+  <section class="section" id="produtos">
+    <div class="section__head reveal">
+      <div>
+        <p class="section__kicker">Loja</p>
+        <h2>Produtos para cada fase do seu pet</h2>
+      </div>
+      <p class="section__lede">Do filhote ao idoso, ração, higiene, brinquedos e acessórios selecionados pela nossa equipe.</p>
+    </div>
+
+    <div class="filters reveal" role="group" aria-label="Filtrar produtos">
+      <input type="search" id="searchInput" placeholder="Buscar produto..." aria-label="Buscar produto" />
+      <select id="categoriaFilter" aria-label="Filtrar por categoria">
+        <option value="">Todas as categorias</option>
+        <option value="racao">Ração</option>
+        <option value="higiene">Higiene</option>
+        <option value="brinquedo">Brinquedos</option>
+        <option value="acessorio">Acessórios</option>
+        <option value="petisco">Petiscos</option>
+        <option value="saude">Saúde</option>
+      </select>
+      <select id="especieFilter" aria-label="Filtrar por espécie">
+        <option value="">Cães e gatos</option>
+        <option value="cachorro">Só cães</option>
+        <option value="gato">Só gatos</option>
+      </select>
+    </div>
+
+    <div class="product-grid" id="productGrid" aria-live="polite">
+      <p class="loading">Carregando produtos…</p>
+    </div>
+  </section>
+
+  <section class="section section--muted" id="servicos">
+    <div class="section__head reveal">
+      <div>
+        <p class="section__kicker">Clínica &amp; estética</p>
+        <h2>Agende um serviço para o seu pet</h2>
+      </div>
+      <p class="section__lede">Escolha o serviço, informe os dados do seu companheiro e confirmamos o horário por telefone.</p>
+    </div>
+
+    <div class="service-grid" id="serviceGrid" aria-live="polite">
+      <p class="loading">Carregando serviços…</p>
+    </div>
+  </section>
+
+  <section class="section" id="sobre">
+    <div class="about reveal">
+      <div class="about__art" aria-hidden="true">
+        <svg viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="96" fill="var(--teal)"/>
+          <path d="M60 120c8-30 20-45 40-45s32 15 40 45" stroke="var(--cream)" stroke-width="6" fill="none" stroke-linecap="round"/>
+          <circle cx="100" cy="70" r="18" fill="var(--cream)"/>
+        </svg>
+      </div>
+      <div class="about__text">
+        <p class="section__kicker">Quem cuida</p>
+        <h2>Uma equipe que trata cada pet pelo nome</h2>
+        <p>
+          Somos uma loja de bairro com estrutura de clínica: veterinários de plantão,
+          banho e tosa sem sedação e uma equipe treinada para reconhecer sinais de
+          desconforto nos animais antes de qualquer procedimento.
+        </p>
+        <ul class="about__list">
+          <li>Ficha clínica individual para cada pet atendido</li>
+          <li>Produtos selecionados com base em recomendação veterinária</li>
+          <li>Ambiente climatizado e higienizado a cada atendimento</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--muted" id="contato">
+    <div class="section__head reveal">
+      <div>
+        <p class="section__kicker">Fale com a loja</p>
+        <h2>Visite ou entre em contato</h2>
+      </div>
+    </div>
+    <div class="contact-grid">
+      <div class="contact-card reveal">
+        <h3>Endereço</h3>
+        <p>Rua das Palmeiras, 245 — Jardim das Flores<br>São Paulo, SP</p>
+      </div>
+      <div class="contact-card reveal">
+        <h3>Horário</h3>
+        <p>Seg. a sáb.: 8h às 20h<br>Domingo: 9h às 14h</p>
+      </div>
+      <div class="contact-card reveal">
+        <h3>Contato</h3>
+        <p><a href="tel:+551140028922">(11) 4002-8922</a><br><a href="mailto:contato@focinhofeliz.com.br">contato@focinhofeliz.com.br</a></p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <p>© <span id="anoAtual"></span> Focinho Feliz Pet Shop &amp; Clínica. Todos os direitos reservados.</p>
+</footer>
+
+<!-- Carrinho lateral -->
+<aside class="cart-drawer" id="cartDrawer" role="dialog" aria-label="Carrinho de compras" aria-hidden="true" inert>
+  <div class="cart-drawer__head">
+    <h2>Seu carrinho</h2>
+    <button id="cartClose" aria-label="Fechar carrinho">✕</button>
+  </div>
+  <div class="cart-drawer__items" id="cartItems">
+    <p class="cart-empty">Seu carrinho está vazio.</p>
+  </div>
+  <div class="cart-drawer__footer">
+    <div class="cart-total">
+      <span>Total</span>
+      <strong id="cartTotal">R$ 0,00</strong>
+    </div>
+    <button class="btn btn--primary btn--block" id="checkoutBtn" disabled>Finalizar pedido</button>
+  </div>
+</aside>
+<div class="overlay" id="overlay"></div>
+
+<!-- Modal de checkout -->
+<dialog class="modal" id="checkoutModal">
+  <form id="checkoutForm" class="modal__form">
+    <div class="modal__head">
+      <h2>Finalizar pedido</h2>
+      <button type="button" class="modal__close" data-close-modal>✕</button>
+    </div>
+    <p class="modal__hint">Confirmamos o pedido e a forma de entrega por telefone.</p>
+    <label>Nome completo
+      <input type="text" name="nome" required />
+    </label>
+    <label>Telefone / WhatsApp
+      <input type="tel" name="telefone" placeholder="(11) 90000-0000" required />
+    </label>
+    <label>Endereço de entrega (ou "retirar na loja")
+      <input type="text" name="endereco" required />
+    </label>
+    <label>Forma de pagamento
+      <select name="pagamento">
+        <option value="pix">Pix</option>
+        <option value="cartao">Cartão na entrega</option>
+        <option value="dinheiro">Dinheiro na entrega</option>
+      </select>
+    </label>
+    <button type="submit" class="btn btn--primary btn--block">Confirmar pedido</button>
+    <p class="modal__feedback" id="orderFeedback" role="status"></p>
+  </form>
+</dialog>
+
+<!-- Modal de agendamento de serviço -->
+<dialog class="modal" id="bookingModal">
+  <form id="bookingForm" class="modal__form">
+    <div class="modal__head">
+      <h2 id="bookingTitle">Agendar serviço</h2>
+      <button type="button" class="modal__close" data-close-modal>✕</button>
+    </div>
+    <input type="hidden" name="servicoId" id="bookingServiceId" />
+    <label>Nome completo
+      <input type="text" name="nome" required />
+    </label>
+    <label>Telefone / WhatsApp
+      <input type="tel" name="telefone" placeholder="(11) 90000-0000" required />
+    </label>
+    <div class="modal__row">
+      <label>Nome do pet
+        <input type="text" name="petNome" required />
+      </label>
+      <label>Espécie
+        <select name="petEspecie">
+          <option value="cachorro">Cachorro</option>
+          <option value="gato">Gato</option>
+          <option value="outro">Outro</option>
+        </select>
+      </label>
+    </div>
+    <div class="modal__row">
+      <label>Data desejada
+        <input type="date" name="data" required />
+      </label>
+      <label>Horário
+        <input type="time" name="horario" required />
+      </label>
+    </div>
+    <label>Observações (opcional)
+      <textarea name="observacoes" rows="2" placeholder="Alergias, comportamento, preferências..."></textarea>
+    </label>
+    <button type="submit" class="btn btn--primary btn--block">Confirmar agendamento</button>
+    <p class="modal__feedback" id="bookingFeedback" role="status"></p>
+  </form>
+</dialog>
+
+<div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
+<button class="back-to-top" id="backToTop" aria-label="Voltar ao topo">↑</button>
+
+<script src="/js/main.js"></script>
+</body>
+</html>
