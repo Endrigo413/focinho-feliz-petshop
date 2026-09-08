@@ -38,7 +38,11 @@
     document.querySelectorAll("#adminNav button").forEach((b) => b.classList.toggle("is-ativo", b.dataset.aba === nome));
     history.replaceState(null, "", "#" + nome);
     conteudo.innerHTML = '<p class="vazio">Carregando…</p>';
-    ABAS[nome]();
+    Promise.resolve()
+      .then(() => ABAS[nome]())
+      .catch((e) => {
+        conteudo.innerHTML = '<div class="vazio"><div class="vazio__emoji">⚠️</div><p>' + esc(e.message) + "</p></div>";
+      });
   }
 
   /* ===================== VISÃO GERAL ===================== */

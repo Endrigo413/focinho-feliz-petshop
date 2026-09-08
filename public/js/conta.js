@@ -28,7 +28,8 @@
         const r = await FF.api("/auth/login", { method: "POST", body: { email: f.email.value, senha: f.senha.value } });
         FF.definirSessao(r);
         FF.toast(r.admin ? "Modo administrador" : "Bem-vindo(a)!", "ok");
-        irLogado();
+        if (r.admin && !FF.query("redirect")) location.href = "/admin";
+        else irLogado();
       } catch (err) {
         if (err.dados && err.dados.detalhes && err.dados.detalhes.precisaConfirmar) {
           location.href = "/conta/confirmar?email=" + encodeURIComponent(f.email.value) + "&redirect=" + encodeURIComponent(redirect);
