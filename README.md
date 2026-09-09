@@ -55,7 +55,8 @@ npm run seed
 Rodar a suíte de testes ponta-a-ponta (com o servidor no ar em outro terminal):
 
 ```bash
-npm test        # 35 casos: funcionais, integração, segurança, desempenho
+npm test        # 51 casos: funcionais (incl. marketplace, blog, lojas e
+                #  painel admin), integração, segurança, usabilidade/desempenho
 ```
 
 Plano de testes, planilha de resultados e recomendações em
@@ -75,8 +76,8 @@ padrão — a aplicação sobe sem nenhuma variável de ambiente.
   precisa confirmá-lo antes do primeiro login (a conta nasce `pendente`).
 - Mesma mecânica de código para **redefinir a senha** (esqueci minha senha).
 - **Admin**: a conta `admin@focinhofeliz.com.br` já nasce confirmada. Ao entrar
-  com ela, o site mostra uma barra "Você está conectado como administrador"
-  (o painel administrativo dedicado ainda será construído).
+  com ela, o site mostra a barra "modo administrador" e leva direto para o
+  painel dedicado em **`/admin`**.
 
 ### E-mail — modo dev (padrão)
 
@@ -125,14 +126,18 @@ camada de regras de negócio subdividida em **módulos de serviço** por domíni
 │   API Gateway  (src/gateway/router.js)                       │
 │   ponto de entrada único /api → distribui para os serviços   │
 │        │                                                    │
-│        ├── auth        (registro, login, JWT)                │
+│        ├── auth        (registro, login, JWT, rate limit)    │
 │        ├── users       (perfil, endereços)                   │
-│        ├── products    (catálogo + CRUD admin)               │
-│        ├── categories  (categorias de produtos)              │
+│        ├── products    (catálogo marketplace + CRUD admin)   │
+│        ├── categories  (seções de produtos)                  │
 │        ├── cart        (carrinho do usuário)                 │
 │        ├── checkout    (cálculo de frete)                    │
-│        ├── orders      (pedidos, pagamento, webhook)         │
-│        └── services    (serviços da clínica + agendamentos)  │
+│        ├── orders      (pedidos, pagamento, webhook, e-mail) │
+│        ├── services    (serviços da clínica + agendamentos)  │
+│        ├── stores      (lojas físicas + centro de distr.)    │
+│        ├── blog        (posts + comentários + moderação)     │
+│        ├── banners     (banners e promoções da home)         │
+│        └── admin       (visão geral, pedidos, agenda)        │
 │                                                             │
 │   Cada módulo:  rotas → controller → service → repositório   │
 └───────────────────────────────┬─────────────────────────────┘
@@ -153,6 +158,8 @@ camada de regras de negócio subdividida em **módulos de serviço** por domíni
 | **Serviço de Clientes** | `src/modules/auth/` + `users/` | Cadastro, confirmação de e-mail por código, login (JWT), redefinição de senha, perfil e endereços |
 | **Serviço de Pedidos e Pagamento** | `src/modules/orders/` + `checkout/` | Fechamento do carrinho, frete, cobrança, atualização de status via webhook |
 | **Serviço da Clínica** | `src/modules/services/` | Catálogo de banho/tosa/veterinário e agendamentos |
+| **Serviços de Conteúdo** | `src/modules/stores/` + `blog/` + `banners/` | Lojas físicas, blog com comentários/moderação, banners e promoções da home |
+| **Serviço Administrativo** | `src/modules/admin/` | Visão geral (métricas), pedidos com troca de status e agenda da clínica — atrás de `exigirAdmin` |
 | **Armazenamento** | `src/db/` | Persistência (JSON) e seed inicial |
 
 ### Estrutura de pastas
@@ -235,12 +242,14 @@ Base: `/api`. Corpo e respostas em JSON. Rotas protegidas exigem o header
 
 | Método | Rota | Acesso | Descrição |
 |---|---|---|---|
-| GET | `/api/products` | público | Lista com paginação e filtros: `busca`, `categoria`, `especie`, `precoMin`, `precoMax`, `pagina`, `porPagina` |
+| GET | `/api/products` | público | Lista com paginação, filtros (`busca`, `categoria`, `subcategoria`, `especie`, `marca`, `precoMin`, `precoMax`, `promo`, `avaliacaoMin`), `ordenar` e `facetas` na resposta — ver "Conteúdo (v3)" |
 | GET | `/api/products/:id` | público | Detalhe de um produto |
+| GET | `/api/products/:id/relacionados` | público | Produtos da mesma seção |
 | POST | `/api/products` | **admin** | Cadastra produto |
 | PUT | `/api/products/:id` | **admin** | Atualiza dados / estoque |
 | DELETE | `/api/products/:id` | **admin** | Desativa produto (remoção lógica) |
-| GET | `/api/categories` | público | Lista as categorias e a contagem de produtos |
+| POST | `/api/products/:id/reativar` | **admin** | Reativa um produto desativado |
+| GET | `/api/categories` | público | Lista as seções e a contagem de produtos |
 
 ### Carrinho (exige login)
 
@@ -345,14 +354,21 @@ Eventos suportados: `payment.approved`, `payment.pending`, `payment.failed`,
 
 ## Funcionalidades do front-end
 
-- Vitrine de produtos com busca por texto e filtros por categoria/espécie
-- Badge de "Destaque" e aviso/bloqueio de "Esgotado"
-- Carrinho lateral com controle de quantidade e persistência local (`localStorage`)
-- **Caixa de frete dentro do carrinho**: digita o CEP, mostra a distância até a
-  FATEC Taubaté, o valor do frete e o prazo — ou avisa que está fora da área de
-  entrega e bloqueia o "Finalizar pedido"
-- Checkout com formulário de dados do cliente (enviado à API)
-- Vitrine de serviços com agendamento por modal (não aceita datas passadas)
+- Home com carrossel de banners, cards de promoção, seções e prévia do blog
+- Catálogo com filtros (seção, subcategoria, espécie, marca, preço, promoção,
+  avaliação), ordenação, paginação e chips dos filtros ativos
+- Página de produto com galeria, avaliação e relacionados; badge de "Destaque" e
+  aviso/bloqueio de "Esgotado"
+- Carrinho em página própria com controle de quantidade, persistência local
+  (`localStorage`) e **caixa de frete**: digita o CEP, mostra a distância até a
+  FATEC Taubaté, o valor e o prazo — ou avisa que está fora da área de entrega e
+  bloqueia o "Finalizar pedido"
+- Telas separadas de conta (entrar, criar, confirmar código, recuperar senha,
+  painel de pedidos/dados/endereços)
+- Página de lojas com links do Google Maps; blog com post e comentários
+- **Painel `/admin`** com abas: visão geral, produtos (CRUD por seção), pedidos
+  (+status), agendamentos, blog (posts + moderação), banners/promoções
+- Vitrine de serviços com agendamento (não aceita datas passadas)
 - Animações com respeito a `prefers-reduced-motion` e layout responsivo
 
 ---

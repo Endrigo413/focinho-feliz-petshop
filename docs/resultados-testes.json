@@ -1,0 +1,410 @@
+[
+  {
+    "id": "TF01",
+    "categoria": "Funcional",
+    "titulo": "Cadastro: criar conta nova",
+    "status": "PASSA",
+    "evidencia": "HTTP 201 · precisaConfirmar=true · sem token=true · código dev=142264",
+    "obs": ""
+  },
+  {
+    "id": "TF02",
+    "categoria": "Funcional",
+    "titulo": "Confirmação de cadastro por código",
+    "status": "PASSA",
+    "evidencia": "código errado → HTTP 400 (\"Código incorreto. Tentativas restantes: 4.\"); código certo → HTTP 200, status=\"ativo\", token emitido=true",
+    "obs": ""
+  },
+  {
+    "id": "TF03",
+    "categoria": "Funcional",
+    "titulo": "Login bloqueado enquanto e-mail não confirmado",
+    "status": "PASSA",
+    "evidencia": "HTTP 403 · Confirme seu e-mail antes de entrar. Verifique o código enviado.",
+    "obs": ""
+  },
+  {
+    "id": "TF04",
+    "categoria": "Funcional",
+    "titulo": "Login com conta confirmada",
+    "status": "PASSA",
+    "evidencia": "HTTP 200 · admin=false · expira em 7200s",
+    "obs": ""
+  },
+  {
+    "id": "TF05",
+    "categoria": "Funcional",
+    "titulo": "Recuperação de senha por código",
+    "status": "PASSA",
+    "evidencia": "reset HTTP 200; login senha antiga HTTP 401 (esperado 401); senha nova HTTP 200 (esperado 200)",
+    "obs": ""
+  },
+  {
+    "id": "TF06",
+    "categoria": "Funcional",
+    "titulo": "Acesso ao painel do cliente (perfil + pedidos)",
+    "status": "PASSA",
+    "evidencia": "perfil HTTP 200 (Cliente Teste); histórico HTTP 200 (0 pedidos); senhaHash no retorno=false",
+    "obs": ""
+  },
+  {
+    "id": "TF07",
+    "categoria": "Funcional",
+    "titulo": "Busca de produtos por nome",
+    "status": "PASSA",
+    "evidencia": "\"ração\" → 95 itens; \"premium\" → 8 itens",
+    "obs": ""
+  },
+  {
+    "id": "TF08",
+    "categoria": "Funcional",
+    "titulo": "Filtro por categoria",
+    "status": "PASSA",
+    "evidencia": "?categoria=racao → 38 itens, todos da categoria [racao]",
+    "obs": ""
+  },
+  {
+    "id": "TF09",
+    "categoria": "Funcional",
+    "titulo": "Filtro por faixa de preço",
+    "status": "PASSA",
+    "evidencia": "?precoMin=100&precoMax=200 → 52 itens, preços [189, 143.64, 149, 111.84, 167.79, 164.88, 188.79, 207.9, 127.68, 199, 174.15, 112.38, 125.55, 167.16, 143.64, 111.84, 166.6, 119.85, 143.84, 183.77, 223.5, 174.15, 112.38, 179] todos no intervalo=true",
+    "obs": ""
+  },
+  {
+    "id": "TF10",
+    "categoria": "Funcional",
+    "titulo": "Filtro combinado + paginação",
+    "status": "PASSA",
+    "evidencia": "?especie=gato&porPagina=3 → página 1/84, 3 de 250 itens",
+    "obs": ""
+  },
+  {
+    "id": "TF11",
+    "categoria": "Funcional",
+    "titulo": "Carrinho: adicionar itens",
+    "status": "PASSA",
+    "evidencia": "2 produtos distintos no carrinho, 3 unidades, total 661.5",
+    "obs": ""
+  },
+  {
+    "id": "TF12",
+    "categoria": "Funcional",
+    "titulo": "Carrinho: alterar quantidade",
+    "status": "PASSA",
+    "evidencia": "p01 quantidade 2 → 5, subtotal do item 1181.25",
+    "obs": ""
+  },
+  {
+    "id": "TF13",
+    "categoria": "Funcional",
+    "titulo": "Carrinho: remover item",
+    "status": "PASSA",
+    "evidencia": "após remover p05: 1 item restante",
+    "obs": ""
+  },
+  {
+    "id": "TF14",
+    "categoria": "Funcional",
+    "titulo": "Carrinho: bloquear quantidade acima do estoque",
+    "status": "PASSA",
+    "evidencia": "pedir 999 un. de item com estoque baixo → HTTP 409 · \"Estoque insuficiente. Disponível: 11.\"",
+    "obs": ""
+  },
+  {
+    "id": "TF15",
+    "categoria": "Funcional",
+    "titulo": "Checkout: compra do início ao fim",
+    "status": "PASSA",
+    "evidencia": "pedido PED-mttdkovs-34589 criado (HTTP 201); subtotal 1181.25 + frete 0.34 = total 1181.59; status \"aguardando pagamento\"; Pix gerado=true",
+    "obs": ""
+  },
+  {
+    "id": "TF16",
+    "categoria": "Funcional",
+    "titulo": "Painel administrativo: cadastrar / atualizar / remover produto",
+    "status": "PASSA",
+    "evidencia": "admin cria (HTTP 201) · atualiza preço 42,5→39.9 · remove (HTTP 200) e some do catálogo público (HTTP 404); cliente comum tentando cadastrar → HTTP 403 (esperado 403)",
+    "obs": ""
+  },
+  {
+    "id": "TF17",
+    "categoria": "Funcional",
+    "titulo": "Catálogo: filtro por marca e facetas na resposta",
+    "status": "PASSA",
+    "evidencia": "facetas.marcas → 59 marcas; ?marca=Alcon → 6 itens, todos da marca=true; facetas.precoMin/Max = 2/643",
+    "obs": ""
+  },
+  {
+    "id": "TF18",
+    "categoria": "Funcional",
+    "titulo": "Catálogo: filtro “só ofertas” + ordenação por menor preço",
+    "status": "PASSA",
+    "evidencia": "?promo=1&ordenar=menor-preco → 156 itens; todos com preço promocional=true; preço efetivo não-decrescente=true",
+    "obs": ""
+  },
+  {
+    "id": "TF19",
+    "categoria": "Funcional",
+    "titulo": "Catálogo: filtro por avaliação mínima",
+    "status": "PASSA",
+    "evidencia": "?avaliacaoMin=4 → 271 itens, todos com avaliação ≥ 4=true",
+    "obs": ""
+  },
+  {
+    "id": "TF20",
+    "categoria": "Funcional",
+    "titulo": "Produto: página de detalhe e produtos relacionados",
+    "status": "PASSA",
+    "evidencia": "detalhe HTTP 200 (Vaso Autoirrigável Raiz Branco 3,6L); 8 relacionados, todos da seção \"jardinagem\" e sem repetir o próprio=true",
+    "obs": ""
+  },
+  {
+    "id": "TF21",
+    "categoria": "Funcional",
+    "titulo": "Painel administrativo: desativar, listar inativos e reativar produto",
+    "status": "PASSA",
+    "evidencia": "desativado some do catálogo público (HTTP 404); admin com ?incluirInativos=1 ainda vê=true; POST /reativar → HTTP 200; volta ao catálogo público (HTTP 200)",
+    "obs": ""
+  },
+  {
+    "id": "TF22",
+    "categoria": "Funcional",
+    "titulo": "Painel administrativo: visão geral (métricas)",
+    "status": "PASSA",
+    "evidencia": "overview HTTP 200: 347 produtos (345 ativos, 156 em oferta), 1 pedidos, receita R$ 0, 2 clientes; cliente comum → HTTP 403 (esperado 403)",
+    "obs": ""
+  },
+  {
+    "id": "TF23",
+    "categoria": "Funcional",
+    "titulo": "Painel administrativo: acompanhar pedidos e alterar status",
+    "status": "PASSA",
+    "evidencia": "GET /admin/orders → 1 pedidos, 9 status possíveis; PATCH status → HTTP 200 (\"em separação\"); status inválido → HTTP 400; cliente comum → HTTP 403",
+    "obs": ""
+  },
+  {
+    "id": "TF24",
+    "categoria": "Funcional",
+    "titulo": "Painel administrativo: agenda de serviços da clínica",
+    "status": "PASSA",
+    "evidencia": "agendamento criado (HTTP 201); data passada recusada (HTTP 400); GET /admin/appointments → HTTP 200, 1 agendamento(s); cliente comum → HTTP 403",
+    "obs": ""
+  },
+  {
+    "id": "TF25",
+    "categoria": "Funcional",
+    "titulo": "Página de lojas: unidades, centro de distribuição e link do Maps",
+    "status": "PASSA",
+    "evidencia": "GET /stores → 6 pontos (5 lojas + CD \"Centro de Distribuição — FATEC Taubaté\"); todos com mapsUrl=true; loja inexistente → HTTP 404",
+    "obs": ""
+  },
+  {
+    "id": "TF26",
+    "categoria": "Funcional",
+    "titulo": "Blog: listagem de posts e leitura de um post",
+    "status": "PASSA",
+    "evidencia": "GET /blog → 6 posts em 6 categorias; GET /blog/enriquecimento-ambiental-para-gatos → HTTP 200, 4 parágrafo(s); post inexistente → HTTP 404",
+    "obs": ""
+  },
+  {
+    "id": "TF27",
+    "categoria": "Funcional",
+    "titulo": "Blog: leitor autenticado comenta (com validação)",
+    "status": "PASSA",
+    "evidencia": "sem login → HTTP 401; texto curto → HTTP 400; nota fora de 1–5 → HTTP 400; comentário válido → HTTP 201, exibido como \"Cliente T.\"",
+    "obs": ""
+  },
+  {
+    "id": "TF28",
+    "categoria": "Funcional",
+    "titulo": "Painel administrativo: escrever, editar e remover post do blog",
+    "status": "PASSA",
+    "evidencia": "admin cria (HTTP 201, slug \"post-de-teste-qa\") · edita título · cliente comum → HTTP 403 · remove (HTTP 200) e o post some (HTTP 404)",
+    "obs": ""
+  },
+  {
+    "id": "TF29",
+    "categoria": "Funcional",
+    "titulo": "Painel administrativo: moderação de comentários do blog",
+    "status": "PASSA",
+    "evidencia": "GET /blog/comentarios (admin) → HTTP 200, 1 comentário(s), o novo aparece com o título do post=true; cliente comum → HTTP 403; DELETE → HTTP 200",
+    "obs": ""
+  },
+  {
+    "id": "TF30",
+    "categoria": "Funcional",
+    "titulo": "Home: banners e promoções (público vê só os ativos)",
+    "status": "PASSA",
+    "evidencia": "GET /banners → 3 banners + 4 promoções, todos ativos=true; /banners/admin sem token → HTTP 401; com admin → HTTP 200",
+    "obs": ""
+  },
+  {
+    "id": "TF31",
+    "categoria": "Funcional",
+    "titulo": "Painel administrativo: CRUD de promoções da home",
+    "status": "PASSA",
+    "evidencia": "cria promoção (HTTP 201) · desativa (ativo=false) → some da vitrine pública=true · remove (HTTP 200)",
+    "obs": ""
+  },
+  {
+    "id": "TI01",
+    "categoria": "Integração",
+    "titulo": "Cálculo de frete por CEP (valor e prazo)",
+    "status": "PASSA",
+    "evidencia": "12080-000 (Taubaté (sede)): 0.6 km · frete R$ 0.34 / 1 dia(s)  |  12030-000 (Taubaté centro): 0.6 km · frete R$ 0.34 / 1 dia(s)  |  12400-000 (Pindamonhangaba): 14.5 km · frete R$ 8.53 / 2 dia(s)  |  12245-000 (São José dos Campos): 38.3 km · frete R$ 22.6 / 3 dia(s)  |  12520-000 (Guaratinguetá): 43.6 km · FORA DA ÁREA  |  01310-100 (São Paulo capital): 124.8 km · FORA DA ÁREA  |  20040-002 (Rio de Janeiro): 244.2 km · FORA DA ÁREA  |  00000 (CEP inválido): HTTP 400 · \"CEP inválido. Informe os 8 dígitos.\"",
+    "obs": ""
+  },
+  {
+    "id": "TI02",
+    "categoria": "Integração",
+    "titulo": "Gateway de pagamento — cobrança Pix",
+    "status": "PASSA",
+    "evidencia": "pagamento PAY-mttdkpw5-ab4e7 · método pix · status \"pendente\" · copia-e-cola presente=true",
+    "obs": ""
+  },
+  {
+    "id": "TI03",
+    "categoria": "Integração",
+    "titulo": "Gateway de pagamento — checkout de cartão",
+    "status": "PASSA",
+    "evidencia": "método cartao · URL de checkout=https://pagamento.exemplo/checkout/PAY-mttdkpx8-2572c",
+    "obs": ""
+  },
+  {
+    "id": "TI04",
+    "categoria": "Integração",
+    "titulo": "Webhook de pagamento aprova o pedido",
+    "status": "PASSA",
+    "evidencia": "webhook approved → HTTP 200; pedido passou de \"aguardando pagamento\" para \"em separação\"; rastreio gerado=true",
+    "obs": ""
+  },
+  {
+    "id": "TI05",
+    "categoria": "Segurança",
+    "titulo": "Webhook rejeita assinatura inválida",
+    "status": "PASSA",
+    "evidencia": "assinatura falsa → HTTP 401 (esperado 401)",
+    "obs": ""
+  },
+  {
+    "id": "TI06",
+    "categoria": "Integração",
+    "titulo": "Webhook idempotente (não processa o mesmo evento 2x)",
+    "status": "PASSA",
+    "evidencia": "reenvio do mesmo evento → jaProcessado=true",
+    "obs": ""
+  },
+  {
+    "id": "TI07",
+    "categoria": "Integração",
+    "titulo": "E-mail transacional — confirmação de cadastro",
+    "status": "PASSA",
+    "evidencia": "6 e-mail(s) gerados em data/emails/; assunto \"Confirme seu cadastro\" presente=true",
+    "obs": ""
+  },
+  {
+    "id": "TI08",
+    "categoria": "Integração",
+    "titulo": "E-mail transacional — alteração de senha",
+    "status": "PASSA",
+    "evidencia": "assunto \"Código para redefinir sua senha\" presente=true",
+    "obs": ""
+  },
+  {
+    "id": "TI09",
+    "categoria": "Integração",
+    "titulo": "E-mail transacional — confirmação de COMPRA",
+    "status": "PASSA",
+    "evidencia": "e-mail de confirmação de compra encontrado em data/emails/ (assunto do tipo \"Pedido PED-… recebido\"). Enviado por orders.service.enviarEmailPedido ao criar o pedido.",
+    "obs": ""
+  },
+  {
+    "id": "TS01",
+    "categoria": "Segurança",
+    "titulo": "Certificado SSL / HTTPS ativo",
+    "status": "ATENCAO",
+    "evidencia": "servidor atende apenas em HTTP (http://localhost:3000). HTTPS=false. Sem TLS/redirecionamento nem HSTS — deve ser resolvido no deploy (proxy reverso / plataforma).",
+    "obs": ""
+  },
+  {
+    "id": "TS02",
+    "categoria": "Segurança",
+    "titulo": "Senhas e dados sensíveis não expostos",
+    "status": "PASSA",
+    "evidencia": "resposta da API sem senhaHash=true; senha no banco armazenada como hash scrypt=true; códigos de verificação também hasheados=true",
+    "obs": ""
+  },
+  {
+    "id": "TS03",
+    "categoria": "Segurança",
+    "titulo": "Dados de cartão não são coletados nem armazenados",
+    "status": "PASSA",
+    "evidencia": "o sistema não pede número de cartão/CVV; para cartão ele apenas devolve uma URL de checkout do gateway (tokenização fora do e-commerce)",
+    "obs": ""
+  },
+  {
+    "id": "TS04",
+    "categoria": "Segurança",
+    "titulo": "Token JWT com assinatura adulterada é rejeitado",
+    "status": "PASSA",
+    "evidencia": "requisição com assinatura trocada → HTTP 401 (esperado 401)",
+    "obs": ""
+  },
+  {
+    "id": "TS05",
+    "categoria": "Segurança",
+    "titulo": "Cabeçalhos HTTP de segurança",
+    "status": "ATENCAO",
+    "evidencia": "x-powered-by removido=true; ausentes: content-security-policy, strict-transport-security. Recomendado adicionar (ex.: helmet).",
+    "obs": ""
+  },
+  {
+    "id": "TS07",
+    "categoria": "Segurança",
+    "titulo": "Código de verificação no corpo da resposta (modo dev)",
+    "status": "ATENCAO",
+    "evidencia": "cadastro → HTTP 201; campo \"codigoDev\" no JSON=\"186269\". Sem SMTP a API entrega o código na resposta para facilitar o teste; precisa estar comprovadamente desligado em produção.",
+    "obs": ""
+  },
+  {
+    "id": "TS06",
+    "categoria": "Segurança",
+    "titulo": "Proteção contra força bruta no login (rate limiting)",
+    "status": "PASSA",
+    "evidencia": "sequência de tentativas de login → status 401/429. Limite por IP nas rotas /api/auth/* (middleware em memória).",
+    "obs": ""
+  },
+  {
+    "id": "TS08",
+    "categoria": "Segurança",
+    "titulo": "Autorização do painel administrativo (v3)",
+    "status": "PASSA",
+    "evidencia": "cliente comum nas rotas de admin: /admin/overview→403 · /admin/orders→403 · /admin/appointments→403 · /blog→403 · /blog/comentarios→403 · /banners/admin→403 (esperado 403 em todas); sem token → HTTP 401 (esperado 401)",
+    "obs": ""
+  },
+  {
+    "id": "TU01",
+    "categoria": "Usabilidade",
+    "titulo": "Responsividade (mobile e desktop)",
+    "status": "PASSA",
+    "evidencia": "<meta viewport>=true; 5 breakpoints @media(max-width) no CSS; prefers-reduced-motion tratado=true. (Verificação visual em dispositivo real recomendada.)",
+    "obs": ""
+  },
+  {
+    "id": "TU02",
+    "categoria": "Usabilidade",
+    "titulo": "Acessibilidade básica",
+    "status": "PASSA",
+    "evidencia": "lang=\"pt-BR\"=true; link \"pular para o conteúdo\"=true; landmarks main/header/footer=true; 20 usos de ARIA no cabeçalho (layout.js). Auditar com Lighthouse na versão publicada.",
+    "obs": ""
+  },
+  {
+    "id": "TU03",
+    "categoria": "Desempenho",
+    "titulo": "Tempo de carregamento das páginas principais",
+    "status": "PASSA",
+    "evidencia": "Home (HTML): 15.4 ms (méd.) · 3.5 KB  |  Catálogo (HTML): 14.0 ms (méd.) · 4.0 KB  |  CSS: 12.4 ms (méd.) · 40.2 KB  |  JS núcleo: 7.8 ms (méd.) · 4.6 KB  |  JS layout: 10.0 ms (méd.) · 11.5 KB  |  API catálogo: 11.5 ms (méd.) · 13.3 KB  |  API serviços: 9.3 ms (méd.) · 1.7 KB  →  mais lento: 15 ms (limite: 3000 ms). Medição local, sem rede.",
+    "obs": ""
+  }
+]

@@ -1,5 +1,6 @@
-// Bateria de testes ponta-a-ponta do e-commerce Focinho Feliz (35 casos).
-// Cobre: funcionais, integração, segurança e usabilidade/desempenho.
+// Bateria de testes ponta-a-ponta do e-commerce Focinho Feliz (51 casos).
+// Cobre: funcionais (incl. catálogo marketplace, blog, lojas e painel
+// administrativo da v3), integração, segurança e usabilidade/desempenho.
 // Pré-requisito: servidor no ar com banco limpo  ->  npm run seed && npm start
 // Uso:  node tests/e2e.mjs
 // Gera: resultados-testes.csv e resultados-testes.json no diretório atual
@@ -274,7 +275,306 @@ async function funcionais() {
     `admin cria (HTTP ${criar.status}) · atualiza preço 42,5→${atualizar.json?.preco} · remove (HTTP ${remover.status}) e some do catálogo público (HTTP ${sumiuDoCatalogo.status}); cliente comum tentando cadastrar → HTTP ${clienteTentou.status} (esperado 403)`
   );
 
-  return { token: token2, email, pedidoId: p?.id, pagamentoId: p?.pagamento?.id };
+  return { token: token2, email, admToken, pedidoId: p?.id, pagamentoId: p?.pagamento?.id };
+}
+
+/* ======================================================================= */
+/* Catálogo estilo marketplace, blog, lojas e painel administrativo (v3).   */
+/* Roda logo após os testes funcionais básicos, antes de os testes de       */
+/* segurança esgotarem o rate limit das rotas de autenticação.              */
+async function marketplaceEConteudo(ctx) {
+  console.log("\n===== TESTES FUNCIONAIS — MARKETPLACE, CONTEÚDO E PAINEL (v3) =====\n");
+  const cli = ctx.token;
+  const adm = ctx.admToken;
+
+  // TF17 — catálogo: filtro por marca + facetas
+  const base = await req("GET", "/products?porPagina=120");
+  const marcas = base.json.facetas?.marcas || [];
+  const marcaAlvo = marcas[0];
+  const porMarca = await req("GET", "/products?marca=" + encodeURIComponent(marcaAlvo) + "&porPagina=120");
+  const soAMarca = porMarca.json.produtos.every((p) => String(p.marca).toLowerCase() === String(marcaAlvo).toLowerCase());
+  registrar(
+    "TF17",
+    "Funcional",
+    "Catálogo: filtro por marca e facetas na resposta",
+    base.status === 200 && marcas.length > 1 && porMarca.json.total > 0 && soAMarca ? "PASSA" : "FALHA",
+    `facetas.marcas → ${marcas.length} marcas; ?marca=${marcaAlvo} → ${porMarca.json.total} itens, todos da marca=${soAMarca}; facetas.precoMin/Max = ${base.json.facetas?.precoMin}/${base.json.facetas?.precoMax}`
+  );
+
+  // TF18 — catálogo: só promoções + ordenação por menor preço
+  const ef = (p) => (p.precoPromocional != null && p.precoPromocional < p.preco ? p.precoPromocional : p.preco);
+  const promo = await req("GET", "/products?promo=1&ordenar=menor-preco&porPagina=120");
+  const todasEmOferta = promo.json.produtos.every((p) => p.precoPromocional != null);
+  const ordenado = promo.json.produtos.every((p, i, a) => i === 0 || ef(a[i - 1]) <= ef(p));
+  registrar(
+    "TF18",
+    "Funcional",
+    "Catálogo: filtro “só ofertas” + ordenação por menor preço",
+    promo.json.total > 0 && todasEmOferta && ordenado ? "PASSA" : "FALHA",
+    `?promo=1&ordenar=menor-preco → ${promo.json.total} itens; todos com preço promocional=${todasEmOferta}; preço efetivo não-decrescente=${ordenado}`
+  );
+
+  // TF19 — catálogo: filtro por avaliação mínima
+  const avaliados = await req("GET", "/products?avaliacaoMin=4&porPagina=120");
+  const acimaDe4 = avaliados.json.produtos.every((p) => p.avaliacao >= 4);
+  registrar(
+    "TF19",
+    "Funcional",
+    "Catálogo: filtro por avaliação mínima",
+    avaliados.status === 200 && acimaDe4 ? "PASSA" : "FALHA",
+    `?avaliacaoMin=4 → ${avaliados.json.total} itens, todos com avaliação ≥ 4=${acimaDe4}`
+  );
+
+  // TF20 — produto: detalhe + relacionados
+  const alvo = base.json.produtos[0];
+  const detalhe = await req("GET", "/products/" + alvo.id);
+  const rel = await req("GET", "/products/" + alvo.id + "/relacionados");
+  const relOk =
+    Array.isArray(rel.json.produtos) &&
+    rel.json.produtos.every((p) => p.id !== alvo.id && p.categoria === alvo.categoria);
+  registrar(
+    "TF20",
+    "Funcional",
+    "Produto: página de detalhe e produtos relacionados",
+    detalhe.status === 200 && detalhe.json.id === alvo.id && relOk ? "PASSA" : "FALHA",
+    `detalhe HTTP ${detalhe.status} (${detalhe.json?.nome}); ${rel.json?.produtos?.length} relacionados, todos da seção "${alvo.categoria}" e sem repetir o próprio=${relOk}`
+  );
+
+  // TF21 — admin: reativar produto desativado + ?incluirInativos=1
+  const criado = await req("POST", "/products", {
+    token: adm,
+    body: { nome: "Produto Reativável QA", categoria: "racao", preco: 20, estoque: 5 }
+  });
+  const pid = criado.json?.id;
+  await req("DELETE", "/products/" + pid, { token: adm });
+  const publico = await req("GET", "/products/" + pid);
+  const listaAdmin = await req("GET", "/products?incluirInativos=1&porPagina=120", { token: adm });
+  const apareceProAdmin = listaAdmin.json.produtos.some((p) => p.id === pid);
+  const reativado = await req("POST", "/products/" + pid + "/reativar", { token: adm });
+  const voltou = await req("GET", "/products/" + pid);
+  await req("DELETE", "/products/" + pid, { token: adm }); // limpa
+  registrar(
+    "TF21",
+    "Funcional",
+    "Painel administrativo: desativar, listar inativos e reativar produto",
+    publico.status === 404 && apareceProAdmin && reativado.status === 200 && voltou.status === 200 ? "PASSA" : "FALHA",
+    `desativado some do catálogo público (HTTP ${publico.status}); admin com ?incluirInativos=1 ainda vê=${apareceProAdmin}; POST /reativar → HTTP ${reativado.status}; volta ao catálogo público (HTTP ${voltou.status})`
+  );
+
+  // TF22 — admin: visão geral do painel
+  const overview = await req("GET", "/admin/overview", { token: adm });
+  const overviewCliente = await req("GET", "/admin/overview", { token: cli });
+  const o = overview.json || {};
+  const overviewOk =
+    overview.status === 200 &&
+    typeof o.produtos?.total === "number" &&
+    typeof o.pedidos?.total === "number" &&
+    typeof o.pedidos?.receita === "number" &&
+    typeof o.clientes === "number" &&
+    Array.isArray(o.ultimosPedidos);
+  registrar(
+    "TF22",
+    "Funcional",
+    "Painel administrativo: visão geral (métricas)",
+    overviewOk && overviewCliente.status === 403 ? "PASSA" : "FALHA",
+    `overview HTTP ${overview.status}: ${o.produtos?.total} produtos (${o.produtos?.ativos} ativos, ${o.produtos?.emPromocao} em oferta), ${o.pedidos?.total} pedidos, receita R$ ${o.pedidos?.receita}, ${o.clientes} clientes; cliente comum → HTTP ${overviewCliente.status} (esperado 403)`
+  );
+
+  // TF23 — admin: listar pedidos e mudar o status
+  const listaPedidos = await req("GET", "/admin/orders", { token: adm });
+  const mudou = await req("PATCH", "/admin/orders/" + ctx.pedidoId + "/status", {
+    token: adm,
+    body: { status: "em separação" }
+  });
+  const statusInvalido = await req("PATCH", "/admin/orders/" + ctx.pedidoId + "/status", {
+    token: adm,
+    body: { status: "status-que-nao-existe" }
+  });
+  const clienteMuda = await req("PATCH", "/admin/orders/" + ctx.pedidoId + "/status", {
+    token: cli,
+    body: { status: "cancelado" }
+  });
+  registrar(
+    "TF23",
+    "Funcional",
+    "Painel administrativo: acompanhar pedidos e alterar status",
+    listaPedidos.json?.total > 0 &&
+      Array.isArray(listaPedidos.json?.statusPossiveis) &&
+      mudou.status === 200 &&
+      mudou.json?.status === "em separação" &&
+      statusInvalido.status === 400 &&
+      clienteMuda.status === 403
+      ? "PASSA"
+      : "FALHA",
+    `GET /admin/orders → ${listaPedidos.json?.total} pedidos, ${listaPedidos.json?.statusPossiveis?.length} status possíveis; PATCH status → HTTP ${mudou.status} ("${mudou.json?.status}"); status inválido → HTTP ${statusInvalido.status}; cliente comum → HTTP ${clienteMuda.status}`
+  );
+
+  // TF24 — admin: agenda da clínica
+  const dataFutura = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+  const agend = await req("POST", "/appointments", {
+    token: cli,
+    body: {
+      servicoId: "s01",
+      cliente: { nome: "Cliente Teste", telefone: "12999990000" },
+      pet: { nome: "Rex", especie: "cachorro" },
+      data: dataFutura,
+      horario: "10:00"
+    }
+  });
+  const dataPassada = await req("POST", "/appointments", {
+    token: cli,
+    body: {
+      servicoId: "s01",
+      cliente: { nome: "Cliente Teste", telefone: "12999990000" },
+      pet: { nome: "Rex", especie: "cachorro" },
+      data: "2020-01-01",
+      horario: "10:00"
+    }
+  });
+  const agenda = await req("GET", "/admin/appointments", { token: adm });
+  const agendaCliente = await req("GET", "/admin/appointments", { token: cli });
+  registrar(
+    "TF24",
+    "Funcional",
+    "Painel administrativo: agenda de serviços da clínica",
+    agend.status === 201 && dataPassada.status === 400 && agenda.status === 200 && agenda.json.total >= 1 && agendaCliente.status === 403
+      ? "PASSA"
+      : "FALHA",
+    `agendamento criado (HTTP ${agend.status}); data passada recusada (HTTP ${dataPassada.status}); GET /admin/appointments → HTTP ${agenda.status}, ${agenda.json?.total} agendamento(s); cliente comum → HTTP ${agendaCliente.status}`
+  );
+
+  // TF25 — lojas físicas + centro de distribuição
+  const stores = await req("GET", "/stores");
+  const s = stores.json || {};
+  const semLoja = await req("GET", "/stores/loja-que-nao-existe");
+  const temMaps = (s.lojas || []).every((l) => typeof l.mapsUrl === "string" && l.mapsUrl.includes("google.com/maps"));
+  registrar(
+    "TF25",
+    "Funcional",
+    "Página de lojas: unidades, centro de distribuição e link do Maps",
+    stores.status === 200 && s.lojas?.length >= 1 && s.centroDistribuicao?.tipo === "cd" && temMaps && semLoja.status === 404
+      ? "PASSA"
+      : "FALHA",
+    `GET /stores → ${s.total} pontos (${s.lojas?.length} lojas + CD "${s.centroDistribuicao?.nome}"); todos com mapsUrl=${temMaps}; loja inexistente → HTTP ${semLoja.status}`
+  );
+
+  // TF26 — blog: lista de posts + post com comentários
+  const blog = await req("GET", "/blog");
+  const slug = blog.json.posts?.[0]?.slug;
+  const post = await req("GET", "/blog/" + slug);
+  const post404 = await req("GET", "/blog/post-inexistente");
+  registrar(
+    "TF26",
+    "Funcional",
+    "Blog: listagem de posts e leitura de um post",
+    blog.json?.total > 0 &&
+      Array.isArray(blog.json?.categorias) &&
+      post.status === 200 &&
+      Array.isArray(post.json?.conteudo) &&
+      Array.isArray(post.json?.comentarios) &&
+      post404.status === 404
+      ? "PASSA"
+      : "FALHA",
+    `GET /blog → ${blog.json?.total} posts em ${blog.json?.categorias?.length} categorias; GET /blog/${slug} → HTTP ${post.status}, ${post.json?.conteudo?.length} parágrafo(s); post inexistente → HTTP ${post404.status}`
+  );
+
+  // TF27 — blog: comentar exige login e valida o conteúdo
+  const semLogin = await fetch(API + "/blog/" + slug + "/comentarios", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ texto: "Comentário anônimo" })
+  });
+  const curto = await req("POST", "/blog/" + slug + "/comentarios", { token: cli, body: { texto: "ab" } });
+  const notaInvalida = await req("POST", "/blog/" + slug + "/comentarios", {
+    token: cli,
+    body: { texto: "Gostei bastante do artigo!", nota: 9 }
+  });
+  const comentario = await req("POST", "/blog/" + slug + "/comentarios", {
+    token: cli,
+    body: { texto: "Artigo muito útil, obrigado pelas dicas!", nota: 5 }
+  });
+  ctx.comentarioId = comentario.json?.id;
+  registrar(
+    "TF27",
+    "Funcional",
+    "Blog: leitor autenticado comenta (com validação)",
+    semLogin.status === 401 && curto.status === 400 && notaInvalida.status === 400 && comentario.status === 201 && comentario.json?.nota === 5
+      ? "PASSA"
+      : "FALHA",
+    `sem login → HTTP ${semLogin.status}; texto curto → HTTP ${curto.status}; nota fora de 1–5 → HTTP ${notaInvalida.status}; comentário válido → HTTP ${comentario.status}, exibido como "${comentario.json?.nome}"`
+  );
+
+  // TF28 — blog: admin cria, edita e remove post
+  const novoPost = await req("POST", "/blog", {
+    token: adm,
+    body: { titulo: "Post de Teste QA", conteudo: "Primeiro parágrafo do post.\n\nSegundo parágrafo.", categoria: "Geral" }
+  });
+  const postId = novoPost.json?.id;
+  const postSlug = novoPost.json?.slug;
+  const editado = await req("PUT", "/blog/" + postId, { token: adm, body: { titulo: "Post de Teste QA (editado)" } });
+  const clienteCria = await req("POST", "/blog", { token: cli, body: { titulo: "Hacker", conteudo: "x y z" } });
+  const removido = await req("DELETE", "/blog/" + postId, { token: adm });
+  const sumiu = await req("GET", "/blog/" + postSlug);
+  registrar(
+    "TF28",
+    "Funcional",
+    "Painel administrativo: escrever, editar e remover post do blog",
+    novoPost.status === 201 &&
+      !!postSlug &&
+      editado.json?.titulo === "Post de Teste QA (editado)" &&
+      clienteCria.status === 403 &&
+      removido.status === 200 &&
+      sumiu.status === 404
+      ? "PASSA"
+      : "FALHA",
+    `admin cria (HTTP ${novoPost.status}, slug "${postSlug}") · edita título · cliente comum → HTTP ${clienteCria.status} · remove (HTTP ${removido.status}) e o post some (HTTP ${sumiu.status})`
+  );
+
+  // TF29 — blog: moderação de comentários
+  const modLista = await req("GET", "/blog/comentarios", { token: adm });
+  const modClien = await req("GET", "/blog/comentarios", { token: cli });
+  const contemONovo = (modLista.json?.comentarios || []).some((c) => c.id === ctx.comentarioId && c.postTitulo);
+  const modDel = await req("DELETE", "/blog/comentarios/" + ctx.comentarioId, { token: adm });
+  registrar(
+    "TF29",
+    "Funcional",
+    "Painel administrativo: moderação de comentários do blog",
+    modLista.status === 200 && contemONovo && modClien.status === 403 && modDel.status === 200 ? "PASSA" : "FALHA",
+    `GET /blog/comentarios (admin) → HTTP ${modLista.status}, ${modLista.json?.comentarios?.length} comentário(s), o novo aparece com o título do post=${contemONovo}; cliente comum → HTTP ${modClien.status}; DELETE → HTTP ${modDel.status}`
+  );
+
+  // TF30 — banners: vitrine pública x visão do admin
+  const pub = await req("GET", "/banners");
+  const admSemToken = await req("GET", "/banners/admin");
+  const admBanners = await req("GET", "/banners/admin", { token: adm });
+  const soAtivos =
+    (pub.json?.banners || []).every((b) => b.ativo !== false) &&
+    (pub.json?.promocoes || []).every((p) => p.ativo !== false);
+  registrar(
+    "TF30",
+    "Funcional",
+    "Home: banners e promoções (público vê só os ativos)",
+    pub.status === 200 && soAtivos && admSemToken.status === 401 && admBanners.status === 200 ? "PASSA" : "FALHA",
+    `GET /banners → ${pub.json?.banners?.length} banners + ${pub.json?.promocoes?.length} promoções, todos ativos=${soAtivos}; /banners/admin sem token → HTTP ${admSemToken.status}; com admin → HTTP ${admBanners.status}`
+  );
+
+  // TF31 — banners/promoções: CRUD do admin, com reflexo na vitrine pública
+  const novaPromo = await req("POST", "/banners/promocao", {
+    token: adm,
+    body: { selo: "QA", titulo: "Promoção de Teste QA", descricao: "Some após o teste." }
+  });
+  const promoId = novaPromo.json?.id;
+  const desativada = await req("PUT", "/banners/promocao/" + promoId, { token: adm, body: { ativo: false } });
+  const pubApos = await req("GET", "/banners");
+  const some = !(pubApos.json?.promocoes || []).some((p) => p.id === promoId);
+  const delPromo = await req("DELETE", "/banners/promocao/" + promoId, { token: adm });
+  registrar(
+    "TF31",
+    "Funcional",
+    "Painel administrativo: CRUD de promoções da home",
+    novaPromo.status === 201 && !!promoId && desativada.json?.ativo === false && some && delPromo.status === 200 ? "PASSA" : "FALHA",
+    `cria promoção (HTTP ${novaPromo.status}) · desativa (ativo=${desativada.json?.ativo}) → some da vitrine pública=${some} · remove (HTTP ${delPromo.status})`
+  );
 }
 
 /* ======================================================================= */
@@ -423,7 +723,7 @@ async function integracao(ctx) {
     "E-mail transacional — confirmação de COMPRA",
     temCompra ? "PASSA" : "FALHA",
     temCompra
-      ? "e-mail de pedido encontrado"
+      ? `e-mail de confirmação de compra encontrado em data/emails/ (assunto do tipo "Pedido PED-… recebido"). Enviado por orders.service.enviarEmailPedido ao criar o pedido.`
       : `assuntos gerados: [${assuntos.join(" | ")}]. Nenhum e-mail de confirmação de compra: o sistema só envia e-mail para código de cadastro e de redefinição de senha. O pedido é criado sem notificar o cliente por e-mail.`
   );
 }
@@ -531,6 +831,30 @@ async function seguranca(ctx) {
     bloqueou ? "PASSA" : "ATENCAO",
     `sequência de tentativas de login → status ${[...new Set(tentativas)].join("/")}. Limite por IP nas rotas /api/auth/* (middleware em memória).`
   );
+
+  // TS08 — autorização das rotas administrativas da v3 (cliente comum não entra)
+  const rotasAdmin = [
+    ["GET", "/admin/overview"],
+    ["GET", "/admin/orders"],
+    ["GET", "/admin/appointments"],
+    ["POST", "/blog"],
+    ["GET", "/blog/comentarios"],
+    ["GET", "/banners/admin"]
+  ];
+  const respostas = [];
+  for (const [metodo, caminho] of rotasAdmin) {
+    const r = await req(metodo, caminho, { token: ctx.token, body: metodo === "POST" ? {} : undefined });
+    respostas.push(`${caminho}→${r.status}`);
+  }
+  const semToken = await req("GET", "/admin/overview");
+  const todas403 = respostas.every((r) => r.endsWith("403"));
+  registrar(
+    "TS08",
+    "Segurança",
+    "Autorização do painel administrativo (v3)",
+    todas403 && semToken.status === 401 ? "PASSA" : "FALHA",
+    `cliente comum nas rotas de admin: ${respostas.join(" · ")} (esperado 403 em todas); sem token → HTTP ${semToken.status} (esperado 401)`
+  );
 }
 
 /* ======================================================================= */
@@ -579,8 +903,10 @@ async function usabilidadeDesempenho() {
   }
   const rotas = [
     ["/", "Home (HTML)"],
+    ["/produtos", "Catálogo (HTML)"],
     ["/css/style.css", "CSS"],
-    ["/js/main.js", "JS principal"],
+    ["/js/core.js", "JS núcleo"],
+    ["/js/layout.js", "JS layout"],
     ["/api/products", "API catálogo"],
     ["/api/services", "API serviços"]
   ];
@@ -605,6 +931,7 @@ async function usabilidadeDesempenho() {
 /* ======================================================================= */
 (async () => {
   const ctx1 = await funcionais();
+  await marketplaceEConteudo(ctx1);
   await integracao(ctx1);
   await seguranca(ctx1);
   await usabilidadeDesempenho();

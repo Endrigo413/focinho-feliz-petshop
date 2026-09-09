@@ -8,3 +8,6 @@ data/emails/
 # saída da suíte de testes rodada localmente (a versão de referência fica em docs/)
 /resultados-testes.csv
 /resultados-testes.json
+
+# artefatos de entrega gerados localmente (PDF/XLSX/TXT para o Teams)
+/entrega/

@@ -22,11 +22,11 @@ Cliente (navegador)
 ┌───────────────────────────────────────────────┐
 │ API Gateway       src/gateway/router.js        │
 │  /api  →  roteia para o serviço de domínio     │
-└───┬───────┬───────┬───────┬───────┬───────┬────┘
-    ▼       ▼       ▼       ▼       ▼       ▼
-  auth   users  products  cart  checkout orders   services
-    │       │       │       │       │       │        │
-    ▼       ▼       ▼       ▼       ▼       ▼        ▼
+└─┬────┬────┬────┬────┬────┬────┬────┬────┬────┬──┘
+  ▼    ▼    ▼    ▼    ▼    ▼    ▼    ▼    ▼    ▼
+ auth users prod cart chk orders svc stores blog/banners admin
+  │    │    │    │    │    │    │    │      │       │
+  ▼    ▼    ▼    ▼    ▼    ▼    ▼    ▼      ▼       ▼
 ┌───────────────────────────────────────────────┐
 │ Camada de dados   src/db/store.js              │
 │  repositórios  →  data/db.json                  │
@@ -37,7 +37,7 @@ Cliente (navegador)
 
 | Camada | Pasta | O que faz | Como escalar/trocar |
 |---|---|---|---|
-| **Apresentação** | `public/` | Interface: vitrine, filtros, carrinho, checkout, agendamento. JS puro consumindo `fetch`. | Migrar para React/Next.js sem tocar na API |
+| **Apresentação** | `public/` | Páginas HTML separadas (home, catálogo, produto, serviços, lojas, blog, carrinho, conta, `/admin`) com cabeçalho/rodapé compartilhados (`js/layout.js`). JS puro consumindo `fetch`. | Migrar para React/Next.js sem tocar na API |
 | **Regras de negócio** | `src/` | Autenticação, validações, cálculo de totais/frete, orquestração do pagamento. | Extrair módulos para microsserviços |
 | **Armazenamento** | `src/db/` + `data/db.json` | Persistência dos dados (usuários, produtos, carrinhos, pedidos, agendamentos). | Substituir `store.js` por PostgreSQL/MongoDB |
 
@@ -70,10 +70,12 @@ products.routes.js  ──►  autenticar ──►  exigirAdmin ──►  prod
 `src/gateway/router.js` é o **ponto de entrada único**. Responsabilidades:
 
 - Expor o índice de serviços (`GET /api/`) e o healthcheck (`GET /api/health`).
-- Montar cada serviço de domínio em seu prefixo (`/auth`, `/products`, …).
-- Ser o lugar único onde, no futuro, entram preocupações transversais:
-  rate limiting, CORS por origem, logging de acesso, roteamento para
-  microsserviços externos.
+- Montar cada serviço de domínio em seu prefixo: `/auth`, `/users`, `/products`,
+  `/categories`, `/cart`, `/checkout`, `/orders`, `/services`, `/appointments`,
+  `/stores`, `/blog`, `/banners`, `/admin`.
+- Ser o lugar único onde entram preocupações transversais. Já hoje o
+  `rate limiting` está em `/api/auth/*` (`src/middleware/rateLimit.js`); no
+  futuro, CORS por origem, logging de acesso e roteamento para microsserviços.
 
 ## 5. Serviços de domínio
 
@@ -92,17 +94,28 @@ products.routes.js  ──►  autenticar ──►  exigirAdmin ──►  prod
 - Middlewares: `autenticar` (exige token), `autenticarOpcional` (token se
   houver), `exigirAdmin`.
 
-**Front-end** (`public/js/auth.js`, `window.FFAuth`): modal com os painéis
-login / cadastro / código / esqueci / redefinir; guarda `{token, usuario}` em
-`localStorage`; `FFAuth.exigirLogin(cb)` bloqueia carrinho, checkout e
-agendamento e reexecuta a ação após o login; barra "modo administrador"
-quando `usuario.papel === "admin"`.
+**Front-end** (`public/js/core.js` → `window.FF`, e as telas em `public/conta/`):
+páginas separadas de entrar / criar / confirmar código / recuperar senha / painel.
+`FF` guarda `{token, usuario}` em `localStorage` e expõe helpers de API e de sessão;
+as ações que exigem login (carrinho, checkout, agendamento, comentar no blog)
+redirecionam para `/conta/entrar` e retomam depois. Ao entrar com o admin, o site
+mostra a barra "modo administrador" e leva direto para `/admin`.
 
 ### Serviço de Produtos — `products` + `categories`
-- Catálogo com filtros (`busca`, `categoria`, `especie`, faixa de preço) e
-  paginação (`pagina`, `porPagina`).
-- CRUD restrito a admin. `DELETE` é **remoção lógica** (`ativo: false`).
-- `categories` deriva as categorias do catálogo e conta produtos ativos.
+- Catálogo estilo marketplace com filtros (`busca` — nome, marca, descrição,
+  subcategoria e tags, sem acento/caixa; `categoria`, `subcategoria`, `especie`,
+  `marca` (várias, separadas por vírgula), faixa de preço, `promo`, `avaliacaoMin`),
+  ordenação (`ordenar`: `relevancia` / `menor-preco` / `maior-preco` / `avaliacao` /
+  `nome`), paginação e **facetas** (marcas disponíveis + faixa de preço do conjunto
+  filtrado) na resposta.
+- Preço efetivo = `precoPromocional` quando menor que `preco`; filtros e ordenação
+  de preço usam o efetivo.
+- `GET /api/products/:id/relacionados` devolve produtos da mesma seção.
+- CRUD restrito a admin. `DELETE` é **remoção lógica** (`ativo: false`);
+  `POST /api/products/:id/reativar` desfaz. O admin lista inativos com
+  `?incluirInativos=1`.
+- `categories` deriva as seções do catálogo (slug, rótulo, emoji, cor,
+  subcategorias) e conta produtos ativos.
 
 ### Serviço de Carrinho — `cart`
 - Um carrinho por usuário autenticado, persistido.
@@ -126,10 +139,33 @@ quando `usuario.papel === "admin"`.
   interface de um provedor real (cria cobrança Pix/cartão/boleto, assina e
   verifica webhooks).
 
-### Serviço da Clínica — `services`
+### Serviço da Clínica — `services` + `appointments`
 - Catálogo fixo de serviços (banho, tosa, veterinário, hospedagem…).
-- Agendamentos persistidos; recusa datas passadas; vincula ao usuário se
-  houver token.
+- Agendamentos persistidos; recusa datas passadas; exige serviço válido e dados do
+  pet; vincula ao usuário se houver token.
+
+### Serviço de Conteúdo — `stores` + `blog` + `banners`
+- `stores`: dados fixos (`data/stores.js`) das 5 lojas de Taubaté + o centro de
+  distribuição, cada um com `mapsUrl` do Google Maps. Só leitura.
+- `blog`: posts semeados em `data/blog.js` (coleção `postsBlog`) e comentários dos
+  leitores (coleção `comentariosBlog`). Ler é público; comentar exige login e passa
+  por validação (texto de 3 a 1200 caracteres, nota opcional 1–5, nome exibido
+  abreviado). Criar/editar/remover post e remover comentário são ações de admin.
+- `banners`: banners do carrossel e cards de promoção da home (coleções `banners` e
+  `promocoes`). `GET /api/banners` devolve só os ativos, ordenados; `GET
+  /api/banners/admin` devolve tudo. CRUD via `/banner` e `/promocao` (admin).
+
+### Serviço Administrativo — `admin`
+- Todo o roteador está atrás de `autenticar` + `exigirAdmin`.
+- `GET /api/admin/overview`: números do painel (produtos por situação e seção,
+  pedidos por status, receita dos pedidos pagos, contagem de clientes e
+  agendamentos, últimos 8 pedidos).
+- `GET /api/admin/orders` (com busca e filtro por status) e
+  `PATCH /api/admin/orders/:id/status` (valida contra a lista de status e registra
+  no `historico` do pedido com `origem: "admin"`).
+- `GET /api/admin/appointments`: a agenda completa da clínica.
+- As demais telas do painel (produtos, blog, banners) reaproveitam os endpoints dos
+  respectivos serviços de domínio.
 
 ## 6. Fluxo de compra completo
 
@@ -141,6 +177,7 @@ quando `usuario.papel === "admin"`.
 4. POST /api/checkout/shipping {cep}  ───►  distância, entregável?, frete, prazo
 5. POST /api/orders {itens,formaPagamento,cep}
         │  valida estoque, reserva, limpa carrinho
+        │  e-mail "Pedido PED-... recebido" (assíncrono)
         └──────────────────────────────►  { pedido, pagamento: {pix|checkoutUrl} }
 6. (cliente paga no app do banco)
 7. Gateway  ──POST /api/orders/webhook──►  status do pedido: "em separação"
@@ -155,10 +192,11 @@ quando `usuario.papel === "admin"`.
 | Autenticação | JWT assinado (HS256), expiração via claim `exp` |
 | Confirmação de conta | Código de 6 dígitos por e-mail; hash scrypt; expira em 15 min; 5 tentativas; reenvio com throttle |
 | Senhas | `crypto.scrypt` + salt aleatório; comparação `timingSafeEqual` |
-| Autorização | Middleware de papel (`exigirAdmin`); dono-ou-admin em pedidos |
+| Autorização | Middleware de papel (`exigirAdmin`) em `/api/admin/*` e nas rotas de escrita de `products`, `blog` e `banners`; dono-ou-admin em pedidos e agendamentos |
+| Força bruta | `rate limiting` em memória por IP em `/api/auth/*` (20 req / 15 min) |
 | Webhook | Assinatura HMAC-SHA256 do corpo cru; idempotência por `evento.id` |
 | Entrada | Validação em cada `service`; `AppError` → resposta JSON padronizada |
-| Cabeçalhos | `x-powered-by` desabilitado; limite de corpo em 1 MB |
+| Cabeçalhos | `x-powered-by` desabilitado; `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` (faltam CSP e HSTS); limite de corpo em 1 MB |
 
 ## 8. Evolução sugerida
 

@@ -4,10 +4,10 @@
 
 | | |
 |---|---|
-| **Projeto** | Focinho Feliz — E-commerce v2 |
+| **Projeto** | Focinho Feliz — E-commerce v3 (site multipágina estilo marketplace + painel administrativo) |
 | **Contexto** | 1ª Solução — E-commerce (FATEC Taubaté) |
 | **Repositório** | https://github.com/Endrigo413/focinho-feliz-petshop |
-| **Versão do documento** | 1.0 — 08/09/2026 |
+| **Versão do documento** | 2.0 — 08/09/2026 |
 | **Stack implementada** | Node.js · Express · HTML/CSS/JS |
 
 > Versão web deste documento (com os diagramas renderizados): publicada como Artifact do Claude.
@@ -16,8 +16,11 @@
 
 ## 1. Visão geral do sistema
 
-O Focinho Feliz é uma loja virtual que vende produtos para animais de estimação e
-permite agendar serviços da clínica veterinária (banho, tosa, consulta, hospedagem).
+O Focinho Feliz é uma loja virtual **estilo marketplace** que vende produtos para
+animais de estimação, jardinagem e aquarismo, permite agendar serviços da clínica
+veterinária (banho, tosa, consulta, hospedagem), mantém um **blog** com comentários
+de leitores e lista as **lojas físicas** da rede. A operação da loja é feita por um
+**painel administrativo** dedicado (`/admin`).
 
 ### Objetivo
 
@@ -28,22 +31,31 @@ checkout em poucos passos), além de organizar a agenda de serviços da clínica
 ### Público-alvo
 
 - **Cliente final** — tutor de cães e gatos que compra ração, higiene, brinquedos e
-  acessórios, e agenda banho, tosa ou consulta. Acessa pelo navegador, no celular ou no
-  computador.
-- **Administrador da loja** — funcionário responsável pelo catálogo: cadastra produtos,
-  ajusta preços e estoque e acompanha os pedidos. Ao entrar, o site sinaliza que está em
-  "modo administrador".
+  acessórios, e agenda banho, tosa ou consulta. Também lê o blog e comenta os artigos.
+  Acessa pelo navegador, no celular ou no computador.
+- **Administrador da loja** — funcionário responsável pela operação: cadastra produtos
+  por seção, ajusta preços e estoque, acompanha e muda o status dos pedidos, vê a agenda
+  da clínica, escreve posts do blog, modera comentários e edita os banners e promoções
+  da home. Ao entrar, é levado direto para `/admin` e o site sinaliza "modo administrador".
 
 ### Escopo principal
 
-- **Catálogo de produtos** — listagem com busca por nome, filtro por categoria, espécie e
-  faixa de preço, paginação e destaque de itens.
+- **Catálogo estilo marketplace** — listagem com busca (nome, marca, descrição, tags),
+  filtros por categoria, subcategoria, espécie, marca, faixa de preço, promoção e
+  avaliação, ordenação, paginação, **facetas** (marcas e faixa de preço do conjunto
+  filtrado) e página de detalhe com produtos relacionados.
 - **Carrinho de compras** — adicionar, alterar quantidade e remover itens, com verificação
   de estoque e cálculo de subtotal, frete e total.
 - **Pagamentos** — geração de cobrança (Pix, cartão ou boleto) por um gateway externo e
   atualização automática do status do pedido via *webhook*.
-- **Painel administrativo** — cadastro, atualização e remoção de produtos e preços,
-  restritos ao perfil administrador.
+- **Painel administrativo (`/admin`)** — visão geral com métricas; CRUD de produtos por
+  seção (com desativação lógica e reativação); pedidos com mudança de status; agenda da
+  clínica; posts do blog e moderação de comentários; banners e promoções da home.
+  Tudo restrito ao perfil administrador.
+- **Blog** — posts publicados pela loja, com comentários e notas (1–5) de leitores
+  autenticados.
+- **Lojas físicas** — 5 unidades em Taubaté + o centro de distribuição, cada uma com
+  endereço, horário e link do Google Maps.
 - **Área de entrega** — centro de distribuição na FATEC Taubaté; o sistema calcula o frete
   por distância e recusa endereços fora do raio atendido.
 
@@ -56,6 +68,10 @@ checkout em poucos passos), além de organizar a agenda de serviços da clínica
 | **Webhook** | Chamada HTTP que o gateway de pagamento faz ao sistema para informar que uma cobrança foi paga, recusada ou estornada. |
 | **Área de entrega** | Raio de 40 km em torno da FATEC Taubaté; fora dele o pedido não pode ser finalizado. |
 | **Agendamento** | Reserva de um serviço da clínica para um pet, em data e horário, sujeita a confirmação. |
+| **Faceta** | Contagem/opções derivadas do conjunto de produtos já filtrado (marcas disponíveis, faixa de preço) que o front-end usa para montar os filtros. |
+| **Post** | Artigo do blog publicado pela loja (título, resumo, categoria, autor e parágrafos de conteúdo), identificado por um `slug` na URL. |
+| **Comentário** | Opinião de um leitor autenticado sobre um post, com texto e nota opcional de 1 a 5; pode ser removido pelo administrador (moderação). |
+| **Banner / Promoção** | Peças da home (carrossel e cards de oferta) cadastradas no painel; o público só vê as marcadas como ativas. |
 
 ---
 
@@ -71,15 +87,23 @@ descrevem *como* ele se comporta.
 | RF01 | O usuário cria uma conta e faz login. | Alta | `POST /api/auth/register`, `/login` |
 | RF02 | O cadastro é confirmado por um código de 6 dígitos enviado por e-mail. | Alta | `POST /api/auth/verify-email`, `/resend-code` |
 | RF03 | O usuário redefine a senha por código enviado por e-mail. | Média | `/forgot-password`, `/reset-password` |
-| RF04 | O sistema permite buscar produtos por nome ou categoria (e filtrar por espécie e faixa de preço, com paginação). | Alta | `GET /api/products` |
+| RF04 | O sistema permite buscar produtos por texto e filtrar por categoria, subcategoria, espécie, marca, faixa de preço, promoção e avaliação, com ordenação, paginação e facetas na resposta. | Alta | `GET /api/products` |
+| RF04a | O produto tem página de detalhe e lista de produtos relacionados da mesma seção. | Média | `GET /api/products/:id`, `/:id/relacionados` |
 | RF05 | O cliente adiciona, altera a quantidade e remove itens do carrinho, respeitando o estoque. | Alta | módulo `cart` (exige login) |
 | RF06 | O cliente calcula o frete pelo CEP e o sistema informa se o endereço está na área de entrega. | Alta | `POST /api/checkout/shipping` |
 | RF07 | O cliente finaliza a compra; o sistema gera o pedido, reserva o estoque e cria a cobrança. | Alta | `POST /api/orders` |
 | RF08 | O pagamento é processado por um gateway (Pix, cartão ou boleto) e o status do pedido é atualizado automaticamente por webhook. | Alta | `POST /api/orders/webhook` |
 | RF09 | O cliente acompanha seus pedidos: histórico, status e código de rastreio. | Média | `GET /api/orders`, `/api/orders/:id` |
-| RF10 | O administrador cadastra, atualiza e remove produtos, preços e estoque. | Alta | `POST/PUT/DELETE /api/products` (perfil admin) |
-| RF11 | O sistema identifica o administrador e sinaliza visualmente o "modo administrador". | Média | papel no JWT + barra no front-end |
+| RF10 | O administrador cadastra, atualiza, desativa (remoção lógica) e reativa produtos, preços e estoque, escolhendo a seção. | Alta | `POST/PUT/DELETE /api/products`, `POST /api/products/:id/reativar` (perfil admin) |
+| RF11 | O sistema identifica o administrador, o leva direto ao painel `/admin` e sinaliza o "modo administrador". | Média | papel no JWT + `/admin` + barra no front-end |
 | RF12 | O cliente agenda serviços da clínica (banho, tosa, consulta), sem permitir datas passadas. | Média | `POST /api/appointments` |
+| RF13 | O painel administrativo mostra uma visão geral com métricas (produtos, pedidos, receita, clientes, últimos pedidos). | Média | `GET /api/admin/overview` (admin) |
+| RF14 | O administrador acompanha todos os pedidos e altera o status de um pedido. | Alta | `GET /api/admin/orders`, `PATCH /api/admin/orders/:id/status` (admin) |
+| RF15 | O administrador consulta a agenda de serviços da clínica. | Média | `GET /api/admin/appointments` (admin) |
+| RF16 | O sistema publica um blog; o leitor autenticado comenta um post com texto e nota (1–5). | Baixa | `GET /api/blog`, `/api/blog/:slug`, `POST /api/blog/:slug/comentarios` |
+| RF17 | O administrador escreve, edita e remove posts do blog e modera (remove) comentários. | Baixa | `POST/PUT/DELETE /api/blog`, `GET/DELETE /api/blog/comentarios` (admin) |
+| RF18 | O sistema lista as lojas físicas e o centro de distribuição, com link do Google Maps. | Baixa | `GET /api/stores`, `/api/stores/:id` |
+| RF19 | O administrador edita os banners e as promoções exibidos na home; o público só vê os ativos. | Baixa | `GET /api/banners`, `/api/banners/admin` + CRUD (admin) |
 
 ### 2.2 Requisitos não funcionais
 
@@ -89,7 +113,7 @@ descrevem *como* ele se comporta.
 | RNF02 | Disponibilidade | O sistema deve ficar no ar 99,9% do tempo (≈ 43 min/mês de indisponibilidade). | Processo Node sem estado em memória crítico; `GET /api/health` para healthcheck; alvo de deploy com gerenciador de processos e réplicas. |
 | RNF03 | Segurança — LGPD | Coletar o mínimo de dados pessoais e protegê-los. | Só nome, e-mail, telefone e endereço; senha nunca em texto puro; e-mail não é compartilhado com terceiros; dados isolados por conta. |
 | RNF04 | Segurança — PCI-DSS | Dados de pagamento (cartão) criptografados e protegidos. | O sistema **não armazena dados de cartão**: a cobrança é criada no gateway (tokenização) e o sistema guarda apenas `id`, método e status. |
-| RNF05 | Segurança — transporte | Comunicação e credenciais protegidas. | HTTPS em produção; senhas e códigos com `scrypt` + salt; JWT assinado (HS256); webhook autenticado por HMAC-SHA256 e idempotente. |
+| RNF05 | Segurança — transporte | Comunicação e credenciais protegidas. | HTTPS em produção; senhas e códigos com `scrypt` + salt; JWT assinado (HS256); webhook autenticado por HMAC-SHA256 e idempotente; **rate limiting** em `/api/auth/*` (20 req / 15 min por IP); cabeçalhos `X-Content-Type-Options`, `X-Frame-Options` e `Referrer-Policy` (faltam CSP e HSTS — ver `docs/TESTES.md`, D4). |
 | RNF06 | Usabilidade | Interface acessível e utilizável em qualquer tela. | Layout responsivo; atributos ARIA; respeita `prefers-reduced-motion`; textos em português. |
 | RNF07 | Manutenibilidade | Código organizado para evoluir com baixo custo. | Arquitetura em camadas + módulos por domínio; uma responsabilidade por arquivo. |
 | RNF08 | Portabilidade | Trocar o banco de dados sem reescrever as regras de negócio. | Todo o acesso a dados passa por `src/db/store.js`. |
@@ -125,6 +149,8 @@ flowchart TD
     GW --> CHK["checkout"]
     GW --> ORD["orders"]
     GW --> SVC["services + appointments"]
+    GW --> CONT["stores + blog + banners"]
+    GW --> ADM["admin (overview, pedidos, agenda)"]
   end
 
   subgraph DA["Camada de Armazenamento"]
@@ -136,6 +162,8 @@ flowchart TD
   CART --> DB
   ORD --> DB
   SVC --> DB
+  CONT --> DB
+  ADM --> DB
 
   AUTH -.->|codigo por e-mail| MAIL[["Servico de E-mail (SMTP)"]]
   CHK -.->|CEP a distancia| SHIP[["Servico de Frete - Correios / Melhor Envio"]]
@@ -155,7 +183,11 @@ O "cérebro" do sistema: valida dados, autentica, calcula totais e frete, reserv
 orquestra o pagamento. Implementado em **Node.js com Express**. Cada módulo tem as camadas
 internas `rotas → controller → serviço → repositório`. O **API Gateway**
 (`src/gateway/router.js`) é o ponto de entrada único e distribui as requisições para os
-módulos.
+módulos: `auth`, `users`, `products`, `categories`, `cart`, `checkout`, `orders`,
+`services`/`appointments`, `stores`, `blog`, `banners` e `admin`. Os módulos de conteúdo
+(`stores`, `blog`, `banners`) alimentam a home, a página de lojas e o blog; o módulo
+`admin` concentra as consultas e ações do painel administrativo (visão geral, pedidos e
+agenda), sempre atrás dos middlewares `autenticar` + `exigirAdmin`.
 *Equivalente de produção:* o mesmo Node.js/Express, ou Python (Django/FastAPI) ou Java (Spring Boot).
 
 ### Banco de dados
@@ -211,10 +243,15 @@ seriam em um banco relacional.
 | `descricao` | texto | — |
 | `preco` | decimal | ≥ 0, 2 casas |
 | `estoque` | inteiro | ≥ 0 |
-| `categoria` | texto | FK → Categoria (`slug`) |
+| `categoria` | texto | FK → Categoria (`slug`) — a "seção" do marketplace |
+| `subcategoria` | texto | classificação fina dentro da seção (alimenta um filtro) |
+| `marca` | texto | usada no filtro e nas facetas |
 | `especie` | texto | `cachorro` \| `gato` \| `todos` |
+| `preco_promocional` | decimal | opcional; quando `< preco`, é o preço efetivo (filtros e ordenação usam o efetivo) |
+| `avaliacao` | decimal | 0–5; alimenta o filtro `avaliacaoMin` e a ordenação |
+| `tags` | lista | termos extras pesquisáveis |
 | `destaque` | booleano | aparece em evidência na vitrine |
-| `ativo` | booleano | remoção lógica: `false` some do catálogo mas preserva o histórico |
+| `ativo` | booleano | remoção lógica: `false` some do catálogo mas preserva o histórico; reativável pelo admin |
 
 ### Pedido
 
@@ -223,11 +260,12 @@ seriam em um banco relacional.
 | `id` | texto | PK — `PED-...` |
 | `usuario_id` | texto | FK → Usuário (nulo em pedido de visitante) |
 | `criado_em` | data/hora | data do pedido |
-| `status` | enum | `aguardando pagamento` → `em separação` → `enviado` → `entregue` (ou `pagamento recusado` / `reembolsado`) |
+| `status` | enum | `aguardando pagamento` / `aguardando entrega` → `pago` → `em separação` → `enviado` → `entregue` (ou `cancelado` / `pagamento recusado` / `reembolsado`) |
+| `historico` | lista | linha do tempo de status: `{ status, em, origem }` (`origem`: sistema / webhook / admin) |
 | `subtotal` | decimal | soma dos itens |
 | `frete` | decimal | recalculado pelo CEP no servidor |
 | `total` | decimal | `subtotal + frete` |
-| `forma_pagamento` | enum | `pix` \| `cartao` \| `boleto` |
+| `forma_pagamento` | enum | `pix` \| `cartao` \| `boleto` \| `dinheiro` |
 | `endereco_entrega` | texto/objeto | capturado no checkout |
 
 ### Item do Pedido
@@ -243,12 +281,16 @@ seriam em um banco relacional.
 
 | Entidade | Para quê | Campos principais |
 |---|---|---|
-| **Categoria** | Classifica os produtos e alimenta os filtros. | `id`, `slug` (único), `nome` |
+| **Categoria** | Classifica os produtos (a "seção" do marketplace) e alimenta os filtros. | `id`, `slug` (único), `nome`, `emoji`, `cor`, `subcategorias` |
 | **Carrinho** / **Item do Carrinho** | Um carrinho por usuário; guarda produto + quantidade. | `usuario_id` (PK), `atualizado_em`; item: `produto_id`, `quantidade` |
 | **Pagamento** | Cobrança criada no gateway; 1:1 com o pedido. | `id`, `pedido_id`, `metodo`, `status`, `valor` |
 | **Evento de Pagamento** | Idempotência dos webhooks. | `id`, `pagamento_id`, `tipo`, `recebido_em` |
 | **Código de Verificação** | Confirmação de e-mail e redefinição de senha. | `id`, `usuario_id`, `proposito`, `codigo_hash`, `expira_em`, `tentativas` |
-| **Agendamento** | Reserva de um serviço da clínica para um pet. | `id`, `usuario_id`, `servico_id`, `data`, `horario`, `status` |
+| **Agendamento** | Reserva de um serviço da clínica para um pet. | `id`, `usuario_id`, `servico` (`{id, nome, preco}`), `pet` (`{nome, especie}`), `data`, `horario`, `status` |
+| **Post do Blog** | Artigo publicado pela loja. | `id`, `slug` (único), `titulo`, `resumo`, `categoria`, `autor`, `conteudo` (parágrafos), `publicado_em` |
+| **Comentário do Blog** | Opinião de um leitor autenticado sobre um post. | `id`, `post_slug` (FK → Post), `usuario_id`, `nome` (abreviado), `texto` (3–1200 caracteres), `nota` (1–5, opcional), `criado_em` |
+| **Loja** | Unidade física ou centro de distribuição. | `id`, `tipo` (`loja` \| `cd`), `nome`, `endereco`, `bairro`, `cep`, `telefone`, `horario`, `lat`, `lng`, `mapsUrl` (dados fixos em `data/stores.js`) |
+| **Banner / Promoção** | Peças da home configuráveis no painel. | `id`, `titulo`, `ativo`, `ordem` (banner) / `selo`, `descricao`, `link` (promoção) |
 
 ---
 
@@ -275,20 +317,25 @@ flowchart LR
     U9(["Pagar pedido"])
     U10(["Acompanhar pedido"])
     U11(["Agendar servico da clinica"])
-    U12(["Cadastrar / atualizar / remover produto"])
-    U13(["Ajustar preco e estoque"])
-    U14(["Consultar pedidos da loja"])
+    U12(["Ler o blog / comentar um post"])
+    U13(["Cadastrar / atualizar / desativar / reativar produto"])
+    U14(["Ajustar preco e estoque"])
+    U15(["Consultar pedidos e mudar status"])
+    U16(["Ver visao geral e agenda da clinica"])
+    U17(["Escrever posts e moderar comentarios"])
+    U18(["Editar banners e promocoes da home"])
   end
 
-  CLI --- U1 & U3 & U4 & U5 & U6 & U7 & U8 & U9 & U10 & U11
-  ADM --- U3 & U12 & U13 & U14
+  CLI --- U1 & U3 & U4 & U5 & U6 & U7 & U8 & U9 & U10 & U11 & U12
+  ADM --- U3 & U13 & U14 & U15 & U16 & U17 & U18
   U1 -. inclui .-> U2
   U2 -.-> MAIL
   U4 -.-> MAIL
+  U8 -.-> MAIL
   U9 -.-> PAY
 ```
 
-O administrador herda as ações do cliente.
+O administrador herda as ações do cliente. Comentar um post (U12) exige login.
 
 ### 5.2 Diagrama de entidade-relacionamento (DER)
 
@@ -298,6 +345,8 @@ erDiagram
   USUARIO   ||--o| CARRINHO            : "possui"
   USUARIO   ||--o{ CODIGO_VERIFICACAO  : "recebe"
   USUARIO   ||--o{ AGENDAMENTO         : "solicita"
+  USUARIO   ||--o{ COMENTARIO_BLOG     : "escreve"
+  POST_BLOG ||--o{ COMENTARIO_BLOG     : "recebe"
   CATEGORIA ||--o{ PRODUTO             : "classifica"
   PEDIDO    ||--|{ ITEM_PEDIDO         : "contem"
   PRODUTO   ||--o{ ITEM_PEDIDO         : "aparece em"
@@ -383,6 +432,22 @@ erDiagram
     string horario
     string status
   }
+  POST_BLOG {
+    string id PK
+    string slug UK
+    string titulo
+    string categoria
+    string autor
+    date publicado_em
+  }
+  COMENTARIO_BLOG {
+    string id PK
+    string post_slug FK
+    string usuario_id FK
+    string texto
+    int nota
+    datetime criado_em
+  }
 ```
 
 **PK** chave primária · **FK** chave estrangeira · **UK** única.
@@ -400,6 +465,7 @@ sequenceDiagram
   participant OR as orders
   participant DB as Banco
   participant PG as Gateway de Pagamento
+  participant ML as Servico de E-mail
 
   C->>FE: "Adicionar ao carrinho"
   FE->>API: POST /api/cart/items (Bearer JWT)
@@ -422,6 +488,7 @@ sequenceDiagram
     OR->>DB: reserva o estoque
     OR->>PG: criarCobranca(valor, metodo)
     PG-->>OR: { id, pix.copiaECola }
+    OR-)ML: e-mail "Pedido PED-... recebido" (assincrono)
     OR-->>FE: 201 pedido + dados de pagamento
     FE-->>C: exibe QR Code / Pix copia-e-cola
   end
@@ -447,8 +514,13 @@ sequenceDiagram
 | JWT e hash sem bibliotecas externas | Só o módulo `crypto` do Node. Em produção: `jsonwebtoken` e `bcrypt`. |
 | Confirmação de e-mail obrigatória | Reduz contas falsas; código com validade, limite de tentativas e reenvio controlado. |
 | Gateway de pagamento simulado | Mesma interface de um provedor real, permitindo trocar por Mercado Pago/Stripe sem mexer nos `orders`. |
-| Remoção lógica de produtos | Preserva a integridade do histórico de pedidos. |
+| Remoção lógica de produtos | Preserva a integridade do histórico de pedidos; o admin pode reativar. |
 | Frete recalculado no servidor | Segurança: o cliente não define o frete nem burla a área de entrega. |
+| Painel administrativo como módulo próprio (`admin`) | Concentra as consultas e ações de operação (visão geral, pedidos, agenda) atrás de `autenticar` + `exigirAdmin`, sem espalhar regras de autorização pelos outros módulos. |
+| Facetas calculadas no servidor | O front-end monta os filtros a partir do conjunto já filtrado, sem precisar conhecer o catálogo inteiro. |
+| Banners, promoções e posts no banco | Editáveis pelo painel sem novo deploy; o público só enxerga os itens `ativo: true`. |
+| E-mail de confirmação de compra assíncrono | Disparado ao criar o pedido, sem bloquear a resposta da API (`.catch(() => {})`). |
+| Rate limiting em memória | Suficiente para um processo único (MVP); com réplicas, trocar por store compartilhado (Redis). |
 
 ### Caminho para produção
 
